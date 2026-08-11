@@ -68,7 +68,7 @@ public class Shop : MonoBehaviour
         UpdateUI();
         UpdateScore();
 
-        SoundManager soundManager = FindAnyObjectByType<SoundManager>();
+        SoundManager soundManager = FindFirstObjectByType<SoundManager>();
         if (soundManager != null) soundManager.RefreshButtonListeners();
     }
 

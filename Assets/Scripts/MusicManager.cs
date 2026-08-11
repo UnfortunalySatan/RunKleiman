@@ -82,6 +82,10 @@ public class MusicManager : MonoBehaviour
 
     void Update()
     {
+        // ИСПРАВЛЕНИЕ 1: Если игра на паузе (timeScale == 0), принудительно выходим из Update.
+        // Это не даст системе ложно перелистнуть трек при выходе из меню/рекламы.
+        if (Time.timeScale == 0f) return;
+
         if (isPlaying && !isFading && !musicSource.isPlaying)
         {
             PlayNextTrack();
@@ -143,14 +147,16 @@ public class MusicManager : MonoBehaviour
             float elapsed = 0f;
             while (elapsed < fadeDuration)
             {
-                elapsed += Time.deltaTime;
+                elapsed += Time.unscaledDeltaTime;
                 musicSource.volume = Mathf.Lerp(startVolume, 0f, elapsed / fadeDuration);
                 yield return null;
             }
             musicSource.Stop();
         }
 
-        yield return new WaitForSeconds(timeBetweenTracks);
+        // ИСПРАВЛЕНИЕ 2: Заменяем WaitForSeconds на WaitForSecondsRealtime.
+        // Теперь задержка между песнями считается по реальным часам компьютера, игнорируя любые паузы Яндекса.
+        yield return new WaitForSecondsRealtime(timeBetweenTracks);
 
         musicSource.clip = track;
         musicSource.volume = 0f;
@@ -161,7 +167,7 @@ public class MusicManager : MonoBehaviour
 
         while (elapsedFade < fadeDuration)
         {
-            elapsedFade += Time.deltaTime;
+            elapsedFade += Time.unscaledDeltaTime;
             musicSource.volume = Mathf.Lerp(0f, targetVolume, elapsedFade / fadeDuration);
             yield return null;
         }
@@ -216,5 +222,4 @@ public class MusicManager : MonoBehaviour
         else
             musicSource.UnPause();
     }
-
 }
