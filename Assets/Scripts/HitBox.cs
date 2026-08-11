@@ -1,13 +1,13 @@
-using Unity.VisualScripting;
-using UnityEngine;
-using System.Collections.Generic;
 using System.Collections;
+using UnityEngine;
+
 public class HitBox : MonoBehaviour
 {
     [SerializeField] private Animator animator;
     [SerializeField] private GameObject playerSharpsPrefab;
     private PlayerMovement playerMovement;
     private GameObject createdSharps;
+
     private void Start()
     {
         playerMovement = GetComponentInParent<PlayerMovement>();
@@ -15,49 +15,52 @@ public class HitBox : MonoBehaviour
 
     private Vector3 GetPosition()
     {
-        Vector3 position = gameObject.GetComponent<Transform>().position;
-        return position;
+        return transform.position;
     }
 
     private IEnumerator SpawnSharps()
     {
-        createdSharps = Instantiate(playerSharpsPrefab);
-        createdSharps.transform.localScale = new Vector3(0.33f, 0.33f, 0.33f);
+        // Защита от дублирования: если старый объект почему-то не удалился, удаляем его
+        if (createdSharps != null)
+        {
+            Destroy(createdSharps);
+        }
+
+        if (playerSharpsPrefab != null)
+        {
+            createdSharps = Instantiate(playerSharpsPrefab);
+            createdSharps.transform.localScale = new Vector3(0.33f, 0.33f, 0.33f);
+            createdSharps.transform.position = GetPosition();
+        }
         yield return null;
     }
+
     private void PlayerCrush()
     {
         StartCoroutine(SpawnSharps());
-        createdSharps.transform.position = GetPosition();
         EventBus.isCrush?.Invoke();
-        playerMovement.DontRun();
+        if (playerMovement != null) playerMovement.DontRun();
     }
 
     public void HidePlayerCrush()
     {
-        StopCoroutine(SpawnSharps());
-        Destroy(createdSharps);
+        StopAllCoroutines();
+        if (createdSharps != null)
+        {
+            Destroy(createdSharps);
+            createdSharps = null;
+        }
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (collision.gameObject.tag == "Colotun")
+        if (collision.gameObject.CompareTag("Colotun"))
         {
-            //Vector3 distance = collision.gameObject.transform.position - transform.position;
-            //playerMovement.Push(distance.normalized);
-            //Debug.Log("Был удар! " + distance.normalized);
             PlayerCrush();
         }
-        if (collision.gameObject.tag == "Wall")
+        if (collision.gameObject.CompareTag("Wall") || collision.gameObject.CompareTag("Plush"))
         {
-            animator.SetTrigger("Hit");
-        }
-        if (collision.gameObject.tag == "Plush")
-        {
-            
-            animator.SetTrigger("Hit");
+            if (animator != null) animator.SetTrigger("Hit");
         }
     }
-
-    
 }

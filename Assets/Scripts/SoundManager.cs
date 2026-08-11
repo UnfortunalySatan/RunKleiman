@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using YG;
 
 public class SoundManager : MonoBehaviour
 {
@@ -21,24 +22,44 @@ public class SoundManager : MonoBehaviour
             audioSource.playOnAwake = false;
         }
 
-        // Загружаем сохранённую громкость
-        currentVolume = PlayerPrefs.GetFloat("SoundVolume", 1f);
-        audioSource.volume = currentVolume;
-
-        // Подписываем все кнопки
-        Button[] buttons = FindObjectsByType<Button>();
-        foreach (var button in buttons)
+        if (YG2.isSDKEnabled)
         {
-            button.onClick.AddListener(PlayButtonSound);
+            ApplyLoadedVolume();
+        }
+        else
+        {
+            YG2.onGetSDKData += ApplyLoadedVolume;
         }
 
-        // Подписываемся на событие изменения громкости (из MusicManager)
+        RefreshButtonListeners();
         EventBus.soundVolumeChanged += SetVolume;
     }
 
     private void OnDestroy()
     {
+        YG2.onGetSDKData -= ApplyLoadedVolume;
         EventBus.soundVolumeChanged -= SetVolume;
+    }
+
+    void ApplyLoadedVolume()
+    {
+        // Читаем громкость эффектов напрямую из Облака Яндекса
+        currentVolume = YG2.saves.soundVolume;
+        if (audioSource != null)
+        {
+            audioSource.volume = currentVolume;
+        }
+    }
+
+    public void RefreshButtonListeners()
+    {
+        // Безопасный поиск кнопок (включая неактивные панели на сцене)
+        Button[] buttons = FindObjectsByType<Button>(FindObjectsInactive.Include);
+        foreach (var button in buttons)
+        {
+            button.onClick.RemoveListener(PlayButtonSound);
+            button.onClick.AddListener(PlayButtonSound);
+        }
     }
 
     public void SetVolume(float volume)
@@ -49,21 +70,10 @@ public class SoundManager : MonoBehaviour
 
     public void PlayButtonSound()
     {
-        if (buttonClickSound == null || audioSource == null)
-            return;
+        if (buttonClickSound == null || audioSource == null) return;
 
         audioSource.pitch = Random.Range(pitchMin, pitchMax);
         audioSource.volume = currentVolume;
         audioSource.PlayOneShot(buttonClickSound);
-    }
-
-    public void PlaySound(AudioClip clip, float volume = 1f)
-    {
-        if (clip == null || audioSource == null)
-            return;
-
-        audioSource.pitch = Random.Range(pitchMin, pitchMax);
-        audioSource.volume = currentVolume * Mathf.Clamp01(volume);
-        audioSource.PlayOneShot(clip);
     }
 }

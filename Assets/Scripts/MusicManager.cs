@@ -1,25 +1,26 @@
-using System.Collections;
 using System.Collections.Generic;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using YG;
 
 public class MusicManager : MonoBehaviour
 {
     [Header("Музыка")]
-    [SerializeField] private AudioClip[] musicTracks;        // массив треков
-    [SerializeField] private AudioSource musicSource;        // источник для музыки
+    [SerializeField] private AudioClip[] musicTracks;
+    [SerializeField] private AudioSource musicSource;
 
     [Header("Настройки")]
     [SerializeField] private bool playOnStart = true;
-    [SerializeField] private float fadeDuration = 2f;        // длительность затухания (сек)
-    [SerializeField] private float volumeMultiplier = 0.8f;  // базовый множитель громкости (0-1)
-    [SerializeField] private float timeBetweenTracks = 1f;   // пауза между треками
+    [SerializeField] private float fadeDuration = 1.5f;
+    [SerializeField] private float volumeMultiplier = 0.8f;
+    [SerializeField] private float timeBetweenTracks = 1f;
 
-    [Header("UI")]
-    [SerializeField] private Slider musicSlider;             // слайдер громкости музыки
-    [SerializeField] private Slider soundSlider;             // слайдер громкости звуков (опционально)
+    [Header("UI Компоненты")]
+    [SerializeField] private Slider musicSlider;
+    [SerializeField] private Slider soundSlider;
 
-    private List<AudioClip> playlist = new List<AudioClip>(); // очередь треков
+    private List<AudioClip> playlist = new List<AudioClip>();
     private int currentTrackIndex = 0;
     private float baseVolume = 1f;
     private bool isFading = false;
@@ -27,22 +28,39 @@ public class MusicManager : MonoBehaviour
 
     void Start()
     {
-        // Проверяем AudioSource
         if (musicSource == null)
         {
             musicSource = gameObject.AddComponent<AudioSource>();
             musicSource.loop = false;
             musicSource.playOnAwake = false;
-            musicSource.spatialBlend = 0f; // 2D звук
+            musicSource.spatialBlend = 0f;
         }
 
-        // Загружаем сохранённую громкость (если есть)
-        baseVolume = PlayerPrefs.GetFloat("MusicVolume", 1f);
-
-        // Создаём плейлист
         CreatePlaylist();
 
-        // Настройка слайдера
+        // Безопасное WebGL-ожидание инициализации Яндекс SDK
+        if (YG2.isSDKEnabled)
+        {
+            InitializeVolumeSettings();
+        }
+        else
+        {
+            YG2.onGetSDKData += InitializeVolumeSettings;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        YG2.onGetSDKData -= InitializeVolumeSettings;
+    }
+
+    void InitializeVolumeSettings()
+    {
+        // Загружаем громкость из облачного сейва YG
+        baseVolume = YG2.saves.musicVolume;
+        float soundVolume = YG2.saves.soundVolume;
+
+        // Инициализируем ползунки, если они привязаны в инспекторе
         if (musicSlider != null)
         {
             musicSlider.value = baseVolume;
@@ -51,31 +69,38 @@ public class MusicManager : MonoBehaviour
 
         if (soundSlider != null)
         {
-            // Для звуков можно отдельно сохранять
-            float soundVolume = PlayerPrefs.GetFloat("SoundVolume", 1f);
             soundSlider.value = soundVolume;
             soundSlider.onValueChanged.AddListener(SetSoundVolume);
         }
 
-        // Запускаем воспроизведение
-        if (playOnStart && musicTracks.Length > 0)
+        // Применяем громкость к источнику
+        musicSource.volume = baseVolume * volumeMultiplier;
+
+        // Запуск плейлиста
+        if (playOnStart && musicTracks.Length > 0 && !isPlaying)
         {
             PlayNextTrack();
         }
     }
 
-    // ===== СОЗДАНИЕ ПЛЕЙЛИСТА =====
+    void Update()
+    {
+        // Если трек завершился сам по себе — плавно переходим к следующему
+        if (isPlaying && !isFading && !musicSource.isPlaying)
+        {
+            PlayNextTrack();
+        }
+    }
+
     void CreatePlaylist()
     {
         playlist.Clear();
-        // Добавляем все треки в список
         foreach (var track in musicTracks)
         {
-            if (track != null)
-                playlist.Add(track);
+            if (track != null) playlist.Add(track);
         }
 
-        // Перемешиваем плейлист (алгоритм Фишера-Йетса)
+        // Рандом Фишера-Йетса
         for (int i = playlist.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
@@ -85,19 +110,12 @@ public class MusicManager : MonoBehaviour
         }
 
         currentTrackIndex = 0;
-        Debug.Log($"Плейлист создан! Всего треков: {playlist.Count}");
     }
 
-    // ===== ВОСПРОИЗВЕДЕНИЕ СЛЕДУЮЩЕГО ТРЕКА =====
     public void PlayNextTrack()
     {
-        if (playlist.Count == 0)
-        {
-            Debug.LogWarning("Нет треков для воспроизведения!");
-            return;
-        }
+        if (playlist.Count == 0) return;
 
-        // Если дошли до конца плейлиста – перемешиваем заново
         if (currentTrackIndex >= playlist.Count)
         {
             CreatePlaylist();
@@ -108,7 +126,6 @@ public class MusicManager : MonoBehaviour
 
         if (nextTrack == null)
         {
-            Debug.LogWarning("Трек null, пропускаем...");
             PlayNextTrack();
             return;
         }
@@ -116,18 +133,14 @@ public class MusicManager : MonoBehaviour
         StartCoroutine(PlayTrackWithFade(nextTrack));
     }
 
-    // ===== КОРУТИНА ВОСПРОИЗВЕДЕНИЯ С ЗАТУХАНИЕМ =====
     IEnumerator PlayTrackWithFade(AudioClip track)
     {
-        isPlaying = true;
         isFading = true;
 
-        // Плавно уменьшаем громкость текущего трека (если он играет)
         if (musicSource.isPlaying)
         {
             float startVolume = musicSource.volume;
             float elapsed = 0f;
-
             while (elapsed < fadeDuration)
             {
                 elapsed += Time.deltaTime;
@@ -135,18 +148,14 @@ public class MusicManager : MonoBehaviour
                 yield return null;
             }
             musicSource.Stop();
-            musicSource.volume = 0f;
         }
 
-        // Небольшая пауза между треками
         yield return new WaitForSeconds(timeBetweenTracks);
 
-        // Начинаем новый трек
         musicSource.clip = track;
         musicSource.volume = 0f;
         musicSource.Play();
 
-        // Плавное увеличение громкости
         float elapsedFade = 0f;
         float targetVolume = baseVolume * volumeMultiplier;
 
@@ -159,49 +168,58 @@ public class MusicManager : MonoBehaviour
 
         musicSource.volume = targetVolume;
         isFading = false;
-
-        // Ждём окончания трека
-        yield return new WaitForSeconds(track.length - fadeDuration);
-
-        // Если трек всё ещё играет, запускаем следующий
-        if (musicSource.isPlaying && !isFading)
-        {
-            PlayNextTrack();
-        }
+        isPlaying = true;
     }
 
-    // ===== УПРАВЛЕНИЕ ГРОМКОСТЬЮ =====
-
+    // Изменение на лету при перетаскивании ползунка (Без сохранения в облако Яндекса)
     public void SetMusicVolume(float volume)
     {
         baseVolume = Mathf.Clamp01(volume);
         musicSource.volume = baseVolume * volumeMultiplier;
-
-        // Сохраняем настройку
-        PlayerPrefs.SetFloat("MusicVolume", baseVolume);
-        PlayerPrefs.Save();
+        YG2.saves.musicVolume = baseVolume;
     }
 
+    // Изменение на лету при перетаскивании ползунка (Без сохранения в облако Яндекса)
     public void SetSoundVolume(float volume)
     {
         volume = Mathf.Clamp01(volume);
-        PlayerPrefs.SetFloat("SoundVolume", volume);
-        PlayerPrefs.Save();
-
-        // Отправляем событие для обновления громкости звуков
+        YG2.saves.soundVolume = volume;
         EventBus.soundVolumeChanged?.Invoke(volume);
     }
 
-    // ===== ПУБЛИЧНЫЕ МЕТОДЫ =====
+    // ===== МЕТОДЫ ДЛЯ EVENT TRIGGER (POINTER UP) =====
 
-    // Переключение на следующий трек (можно вызвать извне)
-    public void SkipTrack()
+    // Вызывать на слайдере музыки при PointerUp
+    public void SaveMusicVolumeFromSlider()
     {
-        StopAllCoroutines();
-        StartCoroutine(PlayTrackWithFade(playlist[currentTrackIndex]));
+        if (musicSlider != null)
+        {
+            SetMusicVolume(musicSlider.value);
+            YG2.SaveProgress(); // Отправляем данные в облако Яндекса только ОДИН раз при отпускании мыши
+            Debug.Log($"[MusicManager] Громкость музыки ({musicSlider.value}) успешно отправлена в облако YG.");
+        }
     }
 
-    // Пауза/воспроизведение
+    // Вызывать на слайдере звуков при PointerUp
+    public void SaveSoundVolumeFromSlider()
+    {
+        if (soundSlider != null)
+        {
+            SetSoundVolume(soundSlider.value);
+            YG2.SaveProgress(); // Отправляем данные в облако Яндекса только ОДИН раз при отпускании мыши
+            Debug.Log($"[MusicManager] Громкость звуков ({soundSlider.value}) успешно отправлена в облако YG.");
+        }
+    }
+
+    // ===== ДОПОЛНИТЕЛЬНЫЙ УПРАВЛЯЮЩИЙ ФУНКЦИОНАЛ =====
+
+    public void SkipTrack()
+    {
+        if (playlist.Count == 0) return;
+        StopAllCoroutines();
+        PlayNextTrack();
+    }
+
     public void TogglePause()
     {
         if (musicSource.isPlaying)
@@ -210,35 +228,11 @@ public class MusicManager : MonoBehaviour
             musicSource.UnPause();
     }
 
-    // Остановка музыки
     public void StopMusic()
     {
         StopAllCoroutines();
         musicSource.Stop();
         isPlaying = false;
-    }
-
-    // Запуск музыки (если остановлена)
-    public void StartMusic()
-    {
-        if (!isPlaying && playlist.Count > 0)
-        {
-            PlayNextTrack();
-        }
-    }
-
-    // Получить текущий трек (для отображения в UI)
-    public AudioClip GetCurrentTrack()
-    {
-        return musicSource.clip;
-    }
-
-    // Обновить громкость из слайдера (вызывается при загрузке)
-    public void RefreshVolume()
-    {
-        if (musicSlider != null)
-        {
-            SetMusicVolume(musicSlider.value);
-        }
+        isFading = false;
     }
 }
