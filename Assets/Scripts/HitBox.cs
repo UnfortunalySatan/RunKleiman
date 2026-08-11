@@ -10,8 +10,6 @@ public class HitBox : MonoBehaviour
     private GameObject createdSharps;
 
     private bool isCrushed = false;
-
-    // Ссылка на конкретную корутину спавна осколков, чтобы не использовать глобальный StopAllCoroutines()
     private Coroutine spawnSharpsCoroutine;
 
     private void Start()
@@ -37,21 +35,30 @@ public class HitBox : MonoBehaviour
         return transform.position;
     }
 
-    private IEnumerator SpawnSharps()
+    private IEnumerator SpawnSharpsRoutine()
     {
         if (createdSharps != null)
         {
             Destroy(createdSharps);
         }
 
+        // 1. Спавним осколки
         if (playerSharpsPrefab != null)
         {
             createdSharps = Instantiate(playerSharpsPrefab);
             createdSharps.transform.localScale = new Vector3(0.33f, 0.33f, 0.33f);
             createdSharps.transform.position = GetPosition();
         }
+
         yield return null;
-        spawnSharpsCoroutine = null; // Очищаем ссылку после завершения
+
+        // 2. Ждем 2 секунды игрового времени, чтобы игрок насладился визуалом разлета осколков
+        yield return new WaitForSeconds(2f);
+
+        // 3. Жестко и гарантированно вызываем экран смерти через шину событий
+        EventBus.isWallHit?.Invoke();
+
+        spawnSharpsCoroutine = null;
     }
 
     private void PlayerCrush()
@@ -63,18 +70,18 @@ public class HitBox : MonoBehaviour
 
         isCrushed = true;
 
+        // Мгновенно останавливаем физическое тело
         if (parentRb != null) parentRb.linearVelocity = Vector3.zero;
-        if (playerMovement != null) playerMovement.DontRun();
 
+        // Оповещаем PlayerMovement, чтобы он остановил бег и скрыл видимость оригинальной модельки
         EventBus.isCrush?.Invoke();
 
-        // Безопасно запускаем именно эту корутину
-        spawnSharpsCoroutine = StartCoroutine(SpawnSharps());
+        // Запускаем безопасную цепочку: спавн -> ожидание 2 сек -> экран смерти
+        spawnSharpsCoroutine = StartCoroutine(SpawnSharpsRoutine());
     }
 
     public void HidePlayerCrush()
     {
-        // Вместо StopAllCoroutines() аккуратно убираем только спавн осколков, не ломая чужие скрипты и рекламу
         if (spawnSharpsCoroutine != null)
         {
             StopCoroutine(spawnSharpsCoroutine);

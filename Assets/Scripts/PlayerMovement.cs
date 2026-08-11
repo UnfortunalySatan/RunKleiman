@@ -42,7 +42,6 @@ public class PlayerMovement : MonoBehaviour
     private int totalDT;
 
     public bool IsRecoveringFromAd { get; private set; } = false;
-    private Renderer[] playerRenderers;
 
     void Start()
     {
@@ -51,11 +50,6 @@ public class PlayerMovement : MonoBehaviour
 
         animator = GetComponentInChildren<Animator>();
         rb = GetComponentInChildren<Rigidbody>();
-
-        if (playerModel != null)
-        {
-            playerRenderers = playerModel.GetComponentsInChildren<Renderer>(true);
-        }
 
         if (rb == null)
         {
@@ -167,42 +161,32 @@ public class PlayerMovement : MonoBehaviour
 
     private void OnPlayerCrush()
     {
+        if (!isRun) return;
+
         isRun = false;
         if (rb != null) rb.linearVelocity = Vector3.zero;
+
+        // Мгновенно скрываем модельку при получении эвента от Хитбокса
         SetModelVisibility(false);
-        StartCoroutine(LateEndRoutine());
     }
 
     private void OnPlayerAlive()
     {
         SetModelVisibility(true);
         StopAllCoroutines();
-        // Используем Realtime корутину для бессмертия, чтобы она работала на паузе Яндекса
-        StartCoroutine(InvulnerabilityRealtimeRoutine());
+        StartCoroutine(InvulnerabilityRoutine());
     }
 
     private void SetModelVisibility(bool visible)
     {
-        if (playerRenderers != null)
-        {
-            foreach (var ren in playerRenderers)
-            {
-                if (ren != null) ren.enabled = visible;
-            }
-        }
+        playerModel.GetComponent<SkinnedMeshRenderer>().enabled = visible;
     }
 
-    private System.Collections.IEnumerator InvulnerabilityRealtimeRoutine()
+    private System.Collections.IEnumerator InvulnerabilityRoutine()
     {
         isInvulnerable = true;
-        yield return new WaitForSecondsRealtime(0.5f); // Игнорирует Time.timeScale = 0
+        yield return new WaitForSeconds(0.5f);
         isInvulnerable = false;
-    }
-
-    private System.Collections.IEnumerator LateEndRoutine()
-    {
-        yield return new WaitForSeconds(2f);
-        EventBus.isWallHit?.Invoke();
     }
 
     public void Restart()
@@ -222,43 +206,11 @@ public class PlayerMovement : MonoBehaviour
     {
         if (rb != null)
         {
-            // 1. Полностью гасим любые накопленные силы и скорости Rigidbody
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
-
-            // 2. Временно отключаем интерполяцию, чтобы сбросить кэш физики Unity
-            rb.interpolation = RigidbodyInterpolation.None;
         }
-
-        // 3. Перемещаем физическое тело и трансформ игрока в стартовую точку
-        Vector3 targetStartPos = new Vector3(0f, playerPoint.position.y, startZ);
-        playerPoint.position = targetStartPos;
-        if (rb != null)
-        {
-            rb.position = targetStartPos;
-        }
-
-        // 4. Жестко приказываем Unity синхронизировать физические координаты прямо в этом кадре
-        Physics.SyncTransforms();
-
-        // 5. Мгновенно телепортируем камеру Cinemachine за игроком, чтобы она не "летела" через всю карту
-        // Метод автоматически находит активную виртуальную камеру и перемещает её без сглаживания
-        var vCam = FindFirstObjectByType<Unity.Cinemachine.CinemachineCamera>();
-        if (vCam != null)
-        {
-            // Сообщаем Cinemachine, что объект совершил пространственный скачок (Warp)
-            vCam.OnTargetObjectWarped(playerPoint, targetStartPos - playerPoint.position);
-        }
-
-        // 6. Возвращаем плавную интерполяцию Rigidbody обратно для плавного бега
-        if (rb != null)
-        {
-            rb.interpolation = RigidbodyInterpolation.Interpolate;
-        }
-
-        Debug.Log("[PlayerMovement] Безопасная телепортация игрока и Cinemachine на старт успешно выполнена.");
+        playerPoint.position = new Vector3(0f, playerPoint.position.y, startZ);
     }
-
 
     public void Push(Vector3 direction)
     {
@@ -275,26 +227,17 @@ public class PlayerMovement : MonoBehaviour
 
     public void Reward()
     {
-        // Запускаем очистку и респавн через Realtime-корутину, чтобы Unity проснулся
-        StartCoroutine(SafeRewardRoutine());
-    }
-
-    private System.Collections.IEnumerator SafeRewardRoutine()
-    {
         IsRecoveringFromAd = true;
 
-        // 1. Возвращаем игрока в начало и убираем осколки
+        Time.timeScale = 1f;
+        PauseGameYG.SetState(1, false, true);
+
         TeleportToStart();
         EventBus.isContitue?.Invoke();
-        isRun = false; // Игрок НЕ бежит сам по себе сразу после рекламы
+        isRun = false;
 
-        // 2. Даем физическому движку 0.1 сек системного времени, чтобы пул чанков перестроился на позиции (0,0,0)
-        yield return new WaitForSecondsRealtime(0.1f);
-
-        // 3. Только ТЕПЕРЬ, когда уровень готов, сообщаем LevelGenerator открыть меню паузы
         EventBus.isPauseMenu?.Invoke();
 
-        yield return new WaitForSecondsRealtime(0.1f);
         IsRecoveringFromAd = false;
     }
 

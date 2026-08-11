@@ -189,12 +189,23 @@ public class LevelGenerator : MonoBehaviour
     public void Continue()
     {
         isPlay = true;
+
         if (pauseMenu != null) pauseMenu.SetActive(false);
+
+        // 1. Возвращаем физическое время в Unity
         PauseGameYG.SetState(1, false, true);
+
         if (scoreText != null) scoreText.SetActive(true);
 
+        // 2. КРИТИЧЕСКИЙ ВЫЗОВ: Отправляем эвент в шину событий, 
+        // чтобы разбудить PlayerMovement и заставить игрока бежать вперед!
+        EventBus.isPlay?.Invoke();
+
         ClearUIFocus();
+
+        Debug.Log("[LevelGenerator] Игра успешно снята с паузы. Игрок побежал дальше.");
     }
+
 
     public void AnimationEnd()
     {
@@ -239,7 +250,7 @@ public class LevelGenerator : MonoBehaviour
     private void OnEnable()
     {
         EventBus.isWallHit += End;
-        EventBus.isPauseMenu += ContitueWithAd; // Слушаем запрос на открытие меню паузы после рекламы
+        EventBus.isPauseMenu += ContitueWithAd;
     }
 
     private void OnDisable()
@@ -248,19 +259,18 @@ public class LevelGenerator : MonoBehaviour
         EventBus.isPauseMenu -= ContitueWithAd;
     }
 
-    // Идеальная обработка выхода из рекламы
     public void ContitueWithAd()
     {
-        isPlay = false;
+        isPlay = false; // Останавливаем логику генерации апдейтов
 
-        // Сначала возвращаем время в нормальное русло для Unity, чтобы корутины проснулись
-        Time.timeScale = 1f;
+        // Полностью перестраиваем уровень под ногами игрока (в точку 0,0,0) прямо сейчас
+        ResetGeneratorState();
 
         if (deathScreen != null) deathScreen.SetActive(false);
         if (pauseMenu != null) pauseMenu.SetActive(true);
         if (scoreText != null) scoreText.SetActive(false);
 
-        // Переводим паузу на уровень плагина Яндекса (заморозка ввода)
+        // Только теперь фиксируем заморозку ввода на уровне плагина Яндекса
         PauseGameYG.SetState(0, false, true);
 
         ClearUIFocus();
