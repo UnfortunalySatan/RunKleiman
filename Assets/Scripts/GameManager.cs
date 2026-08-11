@@ -6,11 +6,10 @@ using YG;
 
 public class LevelGenerator : MonoBehaviour
 {
-    // Структура для отслеживания чанков в пуле
     private struct ActiveChunkData
     {
-        public GameObject prefabOrigin; // Какому префабу принадлежит
-        public GameObject instance;     // Сам объект на сцене
+        public GameObject prefabOrigin;
+        public GameObject instance;
     }
 
     [Header("Префабы чанков")]
@@ -42,10 +41,10 @@ public class LevelGenerator : MonoBehaviour
     private GameObject lastNormalPrefab = null;
     private ChunkPool chunkPool;
     private bool isPlay = false;
+    private Animator camAnimator;
 
     void Start()
     {
-        // Создаем или находим компонент пула объектов
         chunkPool = gameObject.GetComponent<ChunkPool>();
         if (chunkPool == null) chunkPool = gameObject.AddComponent<ChunkPool>();
 
@@ -69,15 +68,12 @@ public class LevelGenerator : MonoBehaviour
         ResetGeneratorState();
     }
 
-    private Animator camAnimator;
-
     void Update()
     {
         if (!isPlay || player == null) return;
 
         float playerZ = player.position.z;
 
-        // Вместо Destroy возвращаем чанки в пул объектов
         for (int i = activeChunks.Count - 1; i >= 0; i--)
         {
             ActiveChunkData chunkData = activeChunks[i];
@@ -107,7 +103,6 @@ public class LevelGenerator : MonoBehaviour
 
         float randomY = Random.Range(0, 2) == 0 ? 90f : -90f;
 
-        // Запрашиваем объект из пула вместо создания
         GameObject chunkInstance = chunkPool.GetChunk(prefabOrigin, nextSpawnPos, Quaternion.Euler(0, randomY, 0));
 
         ActiveChunkData data = new ActiveChunkData
@@ -139,12 +134,10 @@ public class LevelGenerator : MonoBehaviour
     public void ResetGenerator()
     {
         ResetGeneratorState();
-        EventBus.isContitue?.Invoke(); // Оповещаем другие скрипты через шину событий
     }
 
     void ResetGeneratorState()
     {
-        // Возвращаем все активные чанки обратно в пул
         foreach (var chunkData in activeChunks)
         {
             if (chunkData.instance != null)
@@ -187,6 +180,7 @@ public class LevelGenerator : MonoBehaviour
 
     public void Pause()
     {
+        isPlay = false;
         if (pauseMenu != null) pauseMenu.SetActive(true);
         if (scoreText != null) scoreText.SetActive(false);
         PauseGameYG.SetState(0, false, true);
@@ -211,7 +205,6 @@ public class LevelGenerator : MonoBehaviour
     {
         isPlay = false;
 
-        // При выходе в главное меню полностью зачищаем пул из памяти, чтобы освободить WebGL кэш
         if (chunkPool != null) chunkPool.ClearAllPools();
         ResetGenerator();
 
@@ -246,35 +239,32 @@ public class LevelGenerator : MonoBehaviour
     private void OnEnable()
     {
         EventBus.isWallHit += End;
+        EventBus.isPauseMenu += ContitueWithAd; // Слушаем запрос на открытие меню паузы после рекламы
     }
 
     private void OnDisable()
     {
         EventBus.isWallHit -= End;
+        EventBus.isPauseMenu -= ContitueWithAd;
     }
+
+    // Идеальная обработка выхода из рекламы
     public void ContitueWithAd()
     {
-        // 1. Сначала принудительно возвращаем игру из глубокой заморозки Яндекса,
-        // чтобы WebGL-контекст Unity снова начал обновлять графику UI
-        PauseGameYG.SetState(1, false, true);
+        isPlay = false;
 
-        // 2. Включаем само окно меню паузы
-        if (pauseMenu != null)
-        {
-            pauseMenu.SetActive(true);
-        }
+        // Сначала возвращаем время в нормальное русло для Unity, чтобы корутины проснулись
+        Time.timeScale = 1f;
 
-        // 3. Скрываем текст очков на время паузы, как это делается в обычном методе Pause()
-        if (scoreText != null)
-        {
-            scoreText.SetActive(false);
-        }
+        if (deathScreen != null) deathScreen.SetActive(false);
+        if (pauseMenu != null) pauseMenu.SetActive(true);
+        if (scoreText != null) scoreText.SetActive(false);
 
-        // 4. Очищаем залипший фокус кнопок
+        // Переводим паузу на уровень плагина Яндекса (заморозка ввода)
+        PauseGameYG.SetState(0, false, true);
+
         ClearUIFocus();
     }
 
-
     public void InfoButton() => YG2.GetLeaderboard("Leaderboard");
-
 }
