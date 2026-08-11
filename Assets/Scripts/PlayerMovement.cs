@@ -152,7 +152,10 @@ public class PlayerMovement : MonoBehaviour
         isRun = true;
         Debug.Log("Игра запущена! Движение разрешено.");
     }
-
+    public void DontRun()
+    {
+        isRun = false;
+    }
     public void Restart()
     {
         int yDT = score.GetScore();

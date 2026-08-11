@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
 using YG;
@@ -186,7 +187,7 @@ public class LevelGenerator : MonoBehaviour
             SpawnChunk(true);
         for (int i = startEmptyCount; i < preloadChunks; i++)
             SpawnChunk(false);
-
+        PlayerAlive();
         Debug.Log("Генератор перезапущен");
     }
 
@@ -247,12 +248,14 @@ public class LevelGenerator : MonoBehaviour
         EventBus.isWallHit += End;
         EventBus.isContitue += ResetGenerator;
         EventBus.isPauseMenu += ContitueWithAd;
+        EventBus.isCrush += PlayerCrushing;
     }
     private void OnDisable()
     {
         EventBus.isWallHit -= End;
         EventBus.isContitue -= ResetGenerator;
         EventBus.isPauseMenu -= ContitueWithAd;
+        EventBus.isCrush -= PlayerCrushing;
     }
 
     public void ContitueWithAd()
@@ -265,5 +268,22 @@ public class LevelGenerator : MonoBehaviour
         YG2.GetLeaderboard("Leaderboard");
     }
 
-    
+    private void PlayerCrushing()
+    {
+        playerObj.GetComponentInChildren<SkinnedMeshRenderer>().enabled = false;
+        StartCoroutine(LateEnd());
+    }
+
+    private void PlayerAlive()
+    {
+        playerObj.GetComponentInChildren<SkinnedMeshRenderer>().enabled = true;
+        playerObj.GetComponentInChildren<HitBox>().HidePlayerCrush();
+        StopCoroutine(LateEnd());
+    }
+
+    private IEnumerator LateEnd()
+    {
+        yield return new WaitForSeconds(2f);
+        End();
+    }
 }

@@ -8,4 +8,6 @@ public static class EventBus
     public static Action isContitue;
     public static Action isPauseMenu;
     public static Action<float> soundVolumeChanged;
+
+    public static Action isCrush;
 }

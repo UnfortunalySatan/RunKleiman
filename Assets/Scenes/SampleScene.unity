@@ -8444,11 +8444,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334077199573, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 659
+      value: 800
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334077199573, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 527
+      value: 600
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334077199573, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_LocalPosition.x
@@ -8480,7 +8480,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334077199573, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 70
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334077199573, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_AnchoredPosition.y
@@ -8532,7 +8532,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334665254456, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_CellSize.x
-      value: 500
+      value: 752
       objectReference: {fileID: 0}
     - target: {fileID: 1705290334665254456, guid: f40a236569a66c344b68a9feb3f86a18, type: 3}
       propertyPath: m_CellSize.y
@@ -13827,9 +13827,9 @@ MonoBehaviour:
       de: 
       hi: 
   text: 
-  ru: "\u041D\u0435\u0442 |||"
-  en: No |||
-  tr: "Hay\u0131r |||"
+  ru: "\u041D\u0435\u0442"
+  en: No
+  tr: "Hay\u0131r"
   az: 
   be: 
   he: 
@@ -19163,6 +19163,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HitBox
   animator: {fileID: 5301744131676251869}
+  playerSharpsPrefab: {fileID: 903283975814862390, guid: eeb86ad36c7ccb84ebdd0cc339f4214c, type: 3}
 --- !u!4 &8515279089807660379
 Transform:
   m_ObjectHideFlags: 0
