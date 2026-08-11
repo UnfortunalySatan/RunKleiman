@@ -209,28 +209,6 @@ public class MusicManager : MonoBehaviour
         }
     }
 
-    public void SkipTrack()
-    {
-        if (playlist.Count == 0) return;
-
-        // Защита: Если игрок сейчас выходит из окна рекламы Яндекса, блокируем ложные клики EventSystem
-        PlayerMovement pm = FindAnyObjectByType<PlayerMovement>();
-        if (pm != null && pm.IsRecoveringFromAd)
-        {
-            Debug.Log("[MusicManager] Ложный клик заблокирован при выходе из рекламного оверлея.");
-            return;
-        }
-
-        if (fadeCoroutine != null)
-        {
-            StopCoroutine(fadeCoroutine);
-            fadeCoroutine = null;
-        }
-
-        isFading = false;
-        PlayNextTrack();
-    }
-
     public void TogglePause()
     {
         if (musicSource.isPlaying)
@@ -239,15 +217,4 @@ public class MusicManager : MonoBehaviour
             musicSource.UnPause();
     }
 
-    public void StopMusic()
-    {
-        if (fadeCoroutine != null)
-        {
-            StopCoroutine(fadeCoroutine);
-            fadeCoroutine = null;
-        }
-        musicSource.Stop();
-        isPlaying = false;
-        isFading = false;
-    }
 }

@@ -42,6 +42,7 @@ public class PlayerMovement : MonoBehaviour
     private int totalDT;
 
     public bool IsRecoveringFromAd { get; private set; } = false;
+    private SkinnedMeshRenderer playerRenderer; // Ваша рабочая одиночная ссылка
 
     void Start()
     {
@@ -50,6 +51,11 @@ public class PlayerMovement : MonoBehaviour
 
         animator = GetComponentInChildren<Animator>();
         rb = GetComponentInChildren<Rigidbody>();
+
+        if (playerModel != null)
+        {
+            playerRenderer = playerModel.GetComponent<SkinnedMeshRenderer>();
+        }
 
         if (rb == null)
         {
@@ -60,8 +66,8 @@ public class PlayerMovement : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
 
-        currentSpeed = baseSpeed;
-        currentSideSpeed = baseSideSpeed;
+        // Первичная установка стартовой скорости
+        ResetSpeed();
     }
 
     void Update()
@@ -136,6 +142,7 @@ public class PlayerMovement : MonoBehaviour
     {
         currentSpeed = baseSpeed;
         currentSideSpeed = baseSideSpeed;
+        Debug.Log($"[PlayerMovement] Скорость успешно сброшена к начальной: {baseSpeed}");
     }
 
     private void OnEnable()
@@ -166,20 +173,14 @@ public class PlayerMovement : MonoBehaviour
         isRun = false;
         if (rb != null) rb.linearVelocity = Vector3.zero;
 
-        // Мгновенно скрываем модельку при получении эвента от Хитбокса
-        SetModelVisibility(false);
+        if (playerRenderer != null) playerRenderer.enabled = false;
     }
 
     private void OnPlayerAlive()
     {
-        SetModelVisibility(true);
+        if (playerRenderer != null) playerRenderer.enabled = true;
         StopAllCoroutines();
         StartCoroutine(InvulnerabilityRoutine());
-    }
-
-    private void SetModelVisibility(bool visible)
-    {
-        playerModel.GetComponent<SkinnedMeshRenderer>().enabled = visible;
     }
 
     private System.Collections.IEnumerator InvulnerabilityRoutine()
@@ -199,6 +200,10 @@ public class PlayerMovement : MonoBehaviour
 
         OnPlayerAlive();
         TeleportToStart();
+
+        // КРИТИЧЕСКИЙ ФИКС: Сбрасываем накопленную скорость бега при возврате в меню/рестарте
+        ResetSpeed();
+
         isRun = false;
     }
 
