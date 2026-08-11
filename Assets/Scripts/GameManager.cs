@@ -252,11 +252,29 @@ public class LevelGenerator : MonoBehaviour
     {
         EventBus.isWallHit -= End;
     }
-
     public void ContitueWithAd()
     {
-        if (pauseMenu != null) pauseMenu.SetActive(true);
+        // 1. Сначала принудительно возвращаем игру из глубокой заморозки Яндекса,
+        // чтобы WebGL-контекст Unity снова начал обновлять графику UI
+        PauseGameYG.SetState(1, false, true);
+
+        // 2. Включаем само окно меню паузы
+        if (pauseMenu != null)
+        {
+            pauseMenu.SetActive(true);
+        }
+
+        // 3. Скрываем текст очков на время паузы, как это делается в обычном методе Pause()
+        if (scoreText != null)
+        {
+            scoreText.SetActive(false);
+        }
+
+        // 4. Очищаем залипший фокус кнопок
+        ClearUIFocus();
     }
 
+
     public void InfoButton() => YG2.GetLeaderboard("Leaderboard");
+
 }

@@ -255,8 +255,8 @@ public class PlayerMovement : MonoBehaviour
         IsRecoveringFromAd = true;
 
         EventBus.isContitue?.Invoke();
-        EventBus.isPauseMenu?.Invoke();
         TeleportToStart();
+        EventBus.isPauseMenu?.Invoke();
         isRun = true;
 
         yield return new WaitForSecondsRealtime(0.2f);

@@ -9,8 +9,10 @@ public class HitBox : MonoBehaviour
     private Rigidbody parentRb;
     private GameObject createdSharps;
 
-    // Флаг-предохранитель: защищает от многократного срабатывания смерти при скольжении ловушки
     private bool isCrushed = false;
+
+    // Ссылка на конкретную корутину спавна осколков, чтобы не использовать глобальный StopAllCoroutines()
+    private Coroutine spawnSharpsCoroutine;
 
     private void Start()
     {
@@ -49,32 +51,36 @@ public class HitBox : MonoBehaviour
             createdSharps.transform.position = GetPosition();
         }
         yield return null;
+        spawnSharpsCoroutine = null; // Очищаем ссылку после завершения
     }
 
     private void PlayerCrush()
     {
-        // Если мы уже разбились в этом раунде — мгновенно игнорируем повторный удар
         if (isCrushed) return;
 
-        // Если у игрока действует окно бессмертия после респавна — тоже выходим
         if (playerMovement != null && playerMovement.CheckInvulnerable())
             return;
 
-        // Фиксируем смерть: теперь ловушка больше не сможет запустить взрыв повторно
         isCrushed = true;
 
         if (parentRb != null) parentRb.linearVelocity = Vector3.zero;
         if (playerMovement != null) playerMovement.DontRun();
 
         EventBus.isCrush?.Invoke();
-        StartCoroutine(SpawnSharps());
+
+        // Безопасно запускаем именно эту корутину
+        spawnSharpsCoroutine = StartCoroutine(SpawnSharps());
     }
 
     public void HidePlayerCrush()
     {
-        StopAllCoroutines();
+        // Вместо StopAllCoroutines() аккуратно убираем только спавн осколков, не ломая чужие скрипты и рекламу
+        if (spawnSharpsCoroutine != null)
+        {
+            StopCoroutine(spawnSharpsCoroutine);
+            spawnSharpsCoroutine = null;
+        }
 
-        // Сбрасываем флаг при возрождении или рестарте, чтобы игрок снова мог проиграть
         isCrushed = false;
 
         if (createdSharps != null)
@@ -86,7 +92,6 @@ public class HitBox : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // Если мы уже разбились или бессмертны — полностью игнорируем любые коллизии
         if (isCrushed || (playerMovement != null && playerMovement.CheckInvulnerable()))
             return;
 
