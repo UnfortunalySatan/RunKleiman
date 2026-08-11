@@ -1,18 +1,21 @@
 using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using YG;
 
 public class LevelGenerator : MonoBehaviour
 {
+    // Структура для отслеживания чанков в пуле
+    private struct ActiveChunkData
+    {
+        public GameObject prefabOrigin; // Какому префабу принадлежит
+        public GameObject instance;     // Сам объект на сцене
+    }
+
     [Header("Префабы чанков")]
     [SerializeField] private GameObject[] emptyPrefabs;
     [SerializeField] private GameObject[] normalPrefabs;
-
-    [Header("Ссылки на сцену")]
-    [SerializeField] private GameObject playerObj;
-    private Camera mainCamera;
-    private Animator camAnimator;
 
     [Header("Настройки генерации")]
     [SerializeField] private int startEmptyCount = 4;
@@ -32,43 +35,33 @@ public class LevelGenerator : MonoBehaviour
     [SerializeField] private GameObject deathScreen;
     [SerializeField] private GameObject scoreUI;
 
-    private List<GameObject> activeChunks = new List<GameObject>();
+    private List<ActiveChunkData> activeChunks = new List<ActiveChunkData>();
     private Vector3 nextSpawnPos;
 
     private GameObject lastEmptyPrefab = null;
     private GameObject lastNormalPrefab = null;
-
+    private ChunkPool chunkPool;
     private bool isPlay = false;
-
-    // Кэшированные ссылки компонентов игрока для оптимизации
-    private PlayerMovement playerMovementCache;
-    private SkinnedMeshRenderer playerRendererCache;
-    private HitBox playerHitBoxCache;
 
     void Start()
     {
-        // Устанавливаем дефолтное состояние UI интерфейсов на старте
+        // Создаем или находим компонент пула объектов
+        chunkPool = gameObject.GetComponent<ChunkPool>();
+        if (chunkPool == null) chunkPool = gameObject.AddComponent<ChunkPool>();
+
         if (deathScreen != null) deathScreen.SetActive(false);
         if (continueUI != null) continueUI.SetActive(false);
         if (mainMenu != null) mainMenu.SetActive(true);
         if (scoreUI != null) scoreUI.SetActive(false);
-        if (pauseButton != null) pauseButton.SetActive(true); // Кнопка паузы доступна по клику мыши на ПК
+        if (pauseButton != null) pauseButton.SetActive(true);
 
-        mainCamera = Camera.main;
+        Camera mainCamera = Camera.main;
         if (mainCamera != null)
             camAnimator = mainCamera.GetComponent<Animator>();
 
-        // Сохраняем ссылки один раз для оптимизации процессора
-        if (playerObj != null)
-        {
-            playerMovementCache = playerObj.GetComponent<PlayerMovement>();
-            playerRendererCache = playerObj.GetComponentInChildren<SkinnedMeshRenderer>();
-            playerHitBoxCache = playerObj.GetComponentInChildren<HitBox>();
-        }
-
         if (emptyPrefabs == null || emptyPrefabs.Length == 0 || normalPrefabs == null || normalPrefabs.Length == 0)
         {
-            Debug.LogError("[LevelGenerator] Пожалуйста, заполните оба массива префабов чанков в Инспекторе!");
+            Debug.LogError("[LevelGenerator] Массивы префабов не заполнены!");
             enabled = false;
             return;
         }
@@ -76,31 +69,31 @@ public class LevelGenerator : MonoBehaviour
         ResetGeneratorState();
     }
 
+    private Animator camAnimator;
+
     void Update()
     {
         if (!isPlay || player == null) return;
 
         float playerZ = player.position.z;
 
-        // Удаление старых пройденных чанков позади игрока
+        // Вместо Destroy возвращаем чанки в пул объектов
         for (int i = activeChunks.Count - 1; i >= 0; i--)
         {
-            GameObject chunk = activeChunks[i];
-            if (chunk != null && chunk.transform.position.z < playerZ - destroyDistance)
+            ActiveChunkData chunkData = activeChunks[i];
+            if (chunkData.instance != null && chunkData.instance.transform.position.z < playerZ - destroyDistance)
             {
-                Destroy(chunk);
+                chunkPool.ReturnChunk(chunkData.prefabOrigin, chunkData.instance);
                 activeChunks.RemoveAt(i);
             }
         }
 
-        // Спавн новых блоков перед игроком
         while (activeChunks.Count < preloadChunks)
         {
             bool isEmpty = Random.value < emptyChance;
             SpawnChunk(isEmpty);
         }
 
-        // Вызов паузы на ПК по нажатию клавиши Esc
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Pause();
@@ -109,13 +102,21 @@ public class LevelGenerator : MonoBehaviour
 
     void SpawnChunk(bool forceEmpty)
     {
-        GameObject prefab = forceEmpty ? GetRandomPrefab(emptyPrefabs, ref lastEmptyPrefab) : GetRandomPrefab(normalPrefabs, ref lastNormalPrefab);
-        if (prefab == null) return;
+        GameObject prefabOrigin = forceEmpty ? GetRandomPrefab(emptyPrefabs, ref lastEmptyPrefab) : GetRandomPrefab(normalPrefabs, ref lastNormalPrefab);
+        if (prefabOrigin == null) return;
 
         float randomY = Random.Range(0, 2) == 0 ? 90f : -90f;
-        GameObject chunk = Instantiate(prefab, nextSpawnPos, Quaternion.Euler(0, randomY, 0));
-        activeChunks.Add(chunk);
 
+        // Запрашиваем объект из пула вместо создания
+        GameObject chunkInstance = chunkPool.GetChunk(prefabOrigin, nextSpawnPos, Quaternion.Euler(0, randomY, 0));
+
+        ActiveChunkData data = new ActiveChunkData
+        {
+            prefabOrigin = prefabOrigin,
+            instance = chunkInstance
+        };
+
+        activeChunks.Add(data);
         nextSpawnPos.z += segmentLength;
     }
 
@@ -138,13 +139,17 @@ public class LevelGenerator : MonoBehaviour
     public void ResetGenerator()
     {
         ResetGeneratorState();
-        PlayerAlive();
+        EventBus.isContitue?.Invoke(); // Оповещаем другие скрипты через шину событий
     }
 
     void ResetGeneratorState()
     {
-        foreach (var chunk in activeChunks)
-            if (chunk != null) Destroy(chunk);
+        // Возвращаем все активные чанки обратно в пул
+        foreach (var chunkData in activeChunks)
+        {
+            if (chunkData.instance != null)
+                chunkPool.ReturnChunk(chunkData.prefabOrigin, chunkData.instance);
+        }
         activeChunks.Clear();
 
         nextSpawnPos = Vector3.zero;
@@ -153,6 +158,8 @@ public class LevelGenerator : MonoBehaviour
 
         for (int i = 0; i < startEmptyCount; i++) SpawnChunk(true);
         for (int i = startEmptyCount; i < preloadChunks; i++) SpawnChunk(false);
+
+        ClearUIFocus();
     }
 
     public void Play()
@@ -167,6 +174,8 @@ public class LevelGenerator : MonoBehaviour
         PauseGameYG.SetState(1, false, true);
         if (scoreText != null) scoreText.SetActive(true);
         if (scoreUI != null) scoreUI.SetActive(true);
+
+        ClearUIFocus();
     }
 
     public void End()
@@ -189,6 +198,8 @@ public class LevelGenerator : MonoBehaviour
         if (pauseMenu != null) pauseMenu.SetActive(false);
         PauseGameYG.SetState(1, false, true);
         if (scoreText != null) scoreText.SetActive(true);
+
+        ClearUIFocus();
     }
 
     public void AnimationEnd()
@@ -199,10 +210,10 @@ public class LevelGenerator : MonoBehaviour
     public void MainMenu()
     {
         isPlay = false;
-        ResetGenerator();
 
-        if (playerMovementCache != null)
-            playerMovementCache.ResetSpeed();
+        // При выходе в главное меню полностью зачищаем пул из памяти, чтобы освободить WebGL кэш
+        if (chunkPool != null) chunkPool.ClearAllPools();
+        ResetGenerator();
 
         if (deathScreen != null) deathScreen.SetActive(false);
         if (mainMenu != null) mainMenu.SetActive(true);
@@ -220,22 +231,26 @@ public class LevelGenerator : MonoBehaviour
 
         PauseGameYG.SetState(1, false, true);
         YG2.SetLeaderboard("Leaderboard", YG2.saves.bestRunScore);
+
+        ClearUIFocus();
+    }
+
+    private void ClearUIFocus()
+    {
+        if (EventSystem.current != null)
+        {
+            EventSystem.current.SetSelectedGameObject(null);
+        }
     }
 
     private void OnEnable()
     {
         EventBus.isWallHit += End;
-        EventBus.isContitue += ResetGenerator;
-        EventBus.isPauseMenu += ContitueWithAd;
-        EventBus.isCrush += PlayerCrushing;
     }
 
     private void OnDisable()
     {
         EventBus.isWallHit -= End;
-        EventBus.isContitue -= ResetGenerator;
-        EventBus.isPauseMenu -= ContitueWithAd;
-        EventBus.isCrush -= PlayerCrushing;
     }
 
     public void ContitueWithAd()
@@ -244,23 +259,4 @@ public class LevelGenerator : MonoBehaviour
     }
 
     public void InfoButton() => YG2.GetLeaderboard("Leaderboard");
-
-    private void PlayerCrushing()
-    {
-        if (playerRendererCache != null) playerRendererCache.enabled = false;
-        StartCoroutine(LateEnd());
-    }
-
-    private void PlayerAlive()
-    {
-        if (playerRendererCache != null) playerRendererCache.enabled = true;
-        if (playerHitBoxCache != null) playerHitBoxCache.HidePlayerCrush();
-        StopAllCoroutines();
-    }
-
-    private IEnumerator LateEnd()
-    {
-        yield return new WaitForSeconds(2f);
-        End();
-    }
 }

@@ -16335,6 +16335,7 @@ GameObject:
   - component: {fileID: 2054681669}
   - component: {fileID: 2054681668}
   - component: {fileID: 2054681670}
+  - component: {fileID: 2054681671}
   m_Layer: 0
   m_Name: CinemachineCamera
   m_TagString: MainCamera
@@ -16537,7 +16538,6 @@ MonoBehaviour:
   - {fileID: 8645064404743334022, guid: 7fa4d6c4fc2143643b420f8ae6ce5bdb, type: 3}
   - {fileID: 9211155812487040043, guid: 1808f7424ff21a14d9c56c972dc4735a, type: 3}
   - {fileID: 8369278471196297322, guid: 9ec614626b77e2241b555f041b551ce6, type: 3}
-  playerObj: {fileID: 919132148617236942}
   startEmptyCount: 3
   preloadChunks: 16
   segmentLength: 10
@@ -16545,15 +16545,13 @@ MonoBehaviour:
   destroyDistance: 25
   emptyChance: 0.2
   pauseMenu: {fileID: 1914296951}
-  settingsMenu: {fileID: 0}
+  settingsMenu: {fileID: 1274939158}
   pauseButton: {fileID: 218869793}
   scoreText: {fileID: 1833149390}
-  mobileButtons: {fileID: 0}
   mainMenu: {fileID: 1777627314}
   continueUI: {fileID: 388578557}
   deathScreen: {fileID: 408093346}
   scoreUI: {fileID: 1423722900}
-  mobileButtonsRoot: {fileID: 0}
 --- !u!95 &2054681668
 Animator:
   serializedVersion: 7
@@ -16620,6 +16618,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Score
   scoreText: {fileID: 1362428415}
+  bestScoreText: {fileID: 0}
+--- !u!114 &2054681671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2054681661}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f7ce16b6c85ff44c804353cfdd22a34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ChunkPool
 --- !u!1 &2101663898
 GameObject:
   m_ObjectHideFlags: 0
@@ -17468,6 +17479,11 @@ MonoBehaviour:
   minX: -5
   maxX: 5
   pushForce: 100
+  jumpForce: 7
+  groundCheckDistance: 0.2
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 1
   accelerationRate: 0.1
   maxSpeed: 15
   playerPoint: {fileID: 3745622627901083665}
@@ -18652,7 +18668,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 116
+  m_Constraints: 112
   m_CollisionDetection: 1
 --- !u!65 &8417361359089035524
 BoxCollider:

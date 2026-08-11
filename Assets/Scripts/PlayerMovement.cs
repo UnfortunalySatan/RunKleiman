@@ -7,12 +7,17 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody rb;
     private Animator animator;
 
-    [Header("Параметры игрока (ПК)")]
+    [Header("Параметры бега (ПК)")]
     [SerializeField] private float baseSpeed = 5f;
     [SerializeField] private float baseSideSpeed = 3f;
     [SerializeField] private float minX = -5f;
     [SerializeField] private float maxX = 5f;
     [SerializeField] private float pushForce = 20f;
+
+    [Header("Параметры прыжка")]
+    [SerializeField] private float jumpForce = 7f;         // Сила толчка вверх
+    [SerializeField] private float groundCheckDistance = 0.2f; // Длина луча проверки земли под ногами
+    [SerializeField] private LayerMask groundLayer;        // Слой, который считается землей (например, Default)
 
     [Header("Ускорение со временем")]
     [SerializeField] private float accelerationRate = 0.1f;
@@ -25,6 +30,7 @@ public class PlayerMovement : MonoBehaviour
     private float currentSpeed;
     private float currentSideSpeed;
     private bool isRun = false;
+    private bool isGrounded = true; // Находится ли игрок на земле прямо сейчас
 
     private float startZ;
     public float DistanceTraveled { get; private set; }
@@ -32,7 +38,6 @@ public class PlayerMovement : MonoBehaviour
     public int wasDT;
     private int totalDT;
 
-    // Свойство для защиты других менеджеров от ложных кликов после рекламы
     public bool IsRecoveringFromAd { get; private set; } = false;
 
     void Start()
@@ -49,6 +54,7 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
+        // Включаем интерполяцию для идеального сглаживания движения камеры Cinemachine
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
         currentSpeed = baseSpeed;
@@ -57,6 +63,19 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        // 1. Проверка нахождения на земле (пускаем луч из центра игрока чуть выше его ног строго вниз)
+        isGrounded = Physics.Raycast(playerPoint.position + Vector3.up * 0.1f, Vector3.down, groundCheckDistance + 0.1f, groundLayer);
+
+        // Рисуем этот луч в окне сцены Unity: зеленый — стоим на земле, красный — в воздухе
+        Debug.DrawRay(playerPoint.position + Vector3.up * 0.1f, Vector3.down * (groundCheckDistance + 0.1f), isGrounded ? Color.green : Color.red);
+
+        // 2. Обработка ввода прыжка (только если игра идет и персонаж касается земли)
+        if (isRun && isGrounded && (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)))
+        {
+            Jump();
+        }
+
+        // 3. Постепенное увеличение скорости
         if (isRun && currentSpeed < maxSpeed)
         {
             currentSpeed += accelerationRate * Time.deltaTime;
@@ -65,6 +84,7 @@ public class PlayerMovement : MonoBehaviour
             currentSideSpeed = Mathf.Min(currentSideSpeed, maxSpeed * 0.5f);
         }
 
+        // 4. Расчет пройденной дистанции
         if (isRun)
         {
             DistanceTraveled = playerPoint.position.z - startZ;
@@ -81,6 +101,7 @@ public class PlayerMovement : MonoBehaviour
         if (animator != null)
         {
             animator.SetBool("Run", isRun);
+            animator.SetBool("Grounded", isGrounded); // Передаем состояние земли в аниматор для будущих переходов
         }
 
         if (!isRun)
@@ -89,14 +110,32 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
+        // Управление боковым смещением (A/D или стрелочки влево/вправо)
         float horizontal = Input.GetAxis("Horizontal");
 
+        // Сохраняем текущую скорость по Y (rb.linearVelocity.y), чтобы гравитация и прыжок работали корректно
         Vector3 velocity = new Vector3(horizontal * currentSideSpeed, rb.linearVelocity.y, currentSpeed);
         rb.linearVelocity = velocity;
 
+        // Ограничение по краям трассы
         Vector3 pos = rb.position;
         pos.x = Mathf.Clamp(pos.x, minX, maxX);
         rb.MovePosition(pos);
+    }
+
+    private void Jump()
+    {
+        if (rb != null)
+        {
+            // Перед импульсом обнуляем вертикальную скорость, чтобы прыжок всегда был одинаковой высоты
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
+
+            if (animator != null)
+            {
+                animator.SetTrigger("Jump"); // Запускаем триггер анимации прыжка
+            }
+        }
     }
 
     public void ResetSpeed()
@@ -117,15 +156,8 @@ public class PlayerMovement : MonoBehaviour
         EventBus.isRestart -= Restart;
     }
 
-    public void Run()
-    {
-        isRun = true;
-    }
-
-    public void DontRun()
-    {
-        isRun = false;
-    }
+    public void Run() => isRun = true;
+    public void DontRun() => isRun = false;
 
     public void Restart()
     {
@@ -159,7 +191,6 @@ public class PlayerMovement : MonoBehaviour
 
     public void ContunueWithAd()
     {
-        // Использование уникального ID для исключения конфликтов с магазином
         YG2.RewardedAdvShow("revive_player", Reward);
     }
 
@@ -177,7 +208,6 @@ public class PlayerMovement : MonoBehaviour
         TeleportToStart();
         isRun = true;
 
-        // Пауза 0.2 секунды реального времени для игнорирования кликов EventSystem браузера
         yield return new WaitForSecondsRealtime(0.2f);
         IsRecoveringFromAd = false;
     }
