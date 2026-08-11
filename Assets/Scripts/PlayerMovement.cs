@@ -15,10 +15,10 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float pushForce = 20f;
 
     [Header("Параметры прыжка")]
-    [SerializeField] private float jumpForce = 6.5f;           // Сила прыжка вверх
-    [SerializeField] private float groundCheckRadius = 0.25f;    // Радиус сферы проверки земли под ногами
-    [SerializeField] private Vector3 groundCheckOffset = new Vector3(0, -0.05f, 0); // Смещение сферы вниз под ноги
-    [SerializeField] private LayerMask groundLayer;            // Слой земли
+    [SerializeField] private float jumpForce = 6.5f;
+    [SerializeField] private float groundCheckRadius = 0.25f;
+    [SerializeField] private Vector3 groundCheckOffset = new Vector3(0, -0.05f, 0);
+    [SerializeField] private LayerMask groundLayer;
 
     [Header("Ускорение со временем")]
     [SerializeField] private float accelerationRate = 0.05f;
@@ -27,12 +27,13 @@ public class PlayerMovement : MonoBehaviour
     [Header("Ссылки на компоненты")]
     [SerializeField] private Transform playerPoint;
     [SerializeField] private Score score;
-    [SerializeField] private GameObject playerModel; // Ссылка на модельку игрока (чтобы скрывать при смерти)
+    [SerializeField] private GameObject playerModel;
 
     private float currentSpeed;
     private float currentSideSpeed;
     private bool isRun = false;
     private bool isGrounded = true;
+    private bool isInvulnerable = false;
 
     private float startZ;
     public float DistanceTraveled { get; private set; }
@@ -41,7 +42,7 @@ public class PlayerMovement : MonoBehaviour
     private int totalDT;
 
     public bool IsRecoveringFromAd { get; private set; } = false;
-    private SkinnedMeshRenderer playerRenderer;
+    private Renderer[] playerRenderers; // Массив для кэширования всех частей модельки
 
     void Start()
     {
@@ -52,7 +53,10 @@ public class PlayerMovement : MonoBehaviour
         rb = GetComponentInChildren<Rigidbody>();
 
         if (playerModel != null)
-            playerRenderer = playerModel.GetComponent<SkinnedMeshRenderer>();
+        {
+            // Находим все типы рендереров (обычные и скиннед-меши для анимаций)
+            playerRenderers = playerModel.GetComponentsInChildren<Renderer>(true);
+        }
 
         if (rb == null)
         {
@@ -60,7 +64,6 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        // Включаем интерполяцию для идеального сглаживания движения камеры Cinemachine
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
 
@@ -70,7 +73,6 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Проверка земли через сферу
         Vector3 sphereCenter = playerPoint.position + groundCheckOffset;
         isGrounded = Physics.CheckSphere(sphereCenter, groundCheckRadius, groundLayer);
 
@@ -108,17 +110,16 @@ public class PlayerMovement : MonoBehaviour
 
         if (!isRun)
         {
-            if (rb != null) rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
+            if (rb != null) rb.linearVelocity = Vector3.zero;
             return;
         }
 
         float horizontal = Input.GetAxis("Horizontal");
+        float verticalVelocity = isGrounded && rb.linearVelocity.y < 0.1f ? 0f : rb.linearVelocity.y;
 
-        // Возвращаем плавное движение через linearVelocity (Решает проблему дерганья камеры)
-        Vector3 velocity = new Vector3(horizontal * currentSideSpeed, rb.linearVelocity.y, currentSpeed);
+        Vector3 velocity = new Vector3(horizontal * currentSideSpeed, verticalVelocity, currentSpeed);
         rb.linearVelocity = velocity;
 
-        // Ограничение по бокам трассы
         Vector3 pos = rb.position;
         pos.x = Mathf.Clamp(pos.x, minX, maxX);
         rb.position = pos;
@@ -148,8 +149,8 @@ public class PlayerMovement : MonoBehaviour
     {
         EventBus.isPlay += Run;
         EventBus.isRestart += Restart;
-        EventBus.isCrush += OnPlayerCrush;   // Слушаем событие разрушения от крутилки
-        EventBus.isContitue += OnPlayerAlive; // Слушаем возрождение
+        EventBus.isCrush += OnPlayerCrush;
+        EventBus.isContitue += OnPlayerAlive;
     }
 
     private void OnDisable()
@@ -163,26 +164,49 @@ public class PlayerMovement : MonoBehaviour
     public void Run() => isRun = true;
     public void DontRun() => isRun = false;
 
-    // Логика разрушения игрока
+    public bool CheckInvulnerable() => isInvulnerable;
+
     private void OnPlayerCrush()
     {
         isRun = false;
-        if (playerRenderer != null) playerRenderer.enabled = false; // Прячем модельку
+        if (rb != null) rb.linearVelocity = Vector3.zero;
+
+        // Вместо выключения объекта просто скрываем видимость мешей (Скрипты продолжают работать!)
+        SetModelVisibility(false);
+
         StartCoroutine(LateEndRoutine());
     }
 
-    // Логика восстановления игрока (при старте или рестарте)
     private void OnPlayerAlive()
     {
-        if (playerRenderer != null) playerRenderer.enabled = true; // Возвращаем модельку
+        SetModelVisibility(true); // Возвращаем видимость модельки
         StopAllCoroutines();
+        StartCoroutine(InvulnerabilityRoutine());
+    }
+
+    // Вспомогательный метод для переключения видимости рендереров
+    private void SetModelVisibility(bool visible)
+    {
+        if (playerRenderers != null)
+        {
+            foreach (var ren in playerRenderers)
+            {
+                if (ren != null) ren.enabled = visible;
+            }
+        }
+    }
+
+    private System.Collections.IEnumerator InvulnerabilityRoutine()
+    {
+        isInvulnerable = true;
+        yield return new WaitForSecondsRealtime(0.5f);
+        isInvulnerable = false;
     }
 
     private System.Collections.IEnumerator LateEndRoutine()
     {
-        // Даем 2 секунды посмотреть на разлетающиеся осколки
         yield return new WaitForSeconds(2f);
-        EventBus.isWallHit?.Invoke(); // Вызываем появление экрана смерти в LevelGenerator
+        EventBus.isWallHit?.Invoke();
     }
 
     public void Restart()
@@ -193,7 +217,7 @@ public class PlayerMovement : MonoBehaviour
             YG2.saves.playerScore += yDT;
         }
 
-        OnPlayerAlive(); // Гарантируем, что моделька станет видимой при перезапуске
+        OnPlayerAlive();
         TeleportToStart();
         isRun = false;
     }

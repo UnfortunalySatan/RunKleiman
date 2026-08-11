@@ -9,6 +9,9 @@ public class HitBox : MonoBehaviour
     private Rigidbody parentRb;
     private GameObject createdSharps;
 
+    // Флаг-предохранитель: защищает от многократного срабатывания смерти при скольжении ловушки
+    private bool isCrushed = false;
+
     private void Start()
     {
         playerMovement = GetComponentInParent<PlayerMovement>();
@@ -17,8 +20,6 @@ public class HitBox : MonoBehaviour
 
     private void OnEnable()
     {
-        // Подписываемся на события продолжения и полного рестарта игры, 
-        // чтобы гарантированно удалять старые осколки при возрождении
         EventBus.isContitue += HidePlayerCrush;
         EventBus.isRestart += HidePlayerCrush;
     }
@@ -36,7 +37,6 @@ public class HitBox : MonoBehaviour
 
     private IEnumerator SpawnSharps()
     {
-        // Если старые осколки почему-то еще живы — уничтожаем их перед созданием новых
         if (createdSharps != null)
         {
             Destroy(createdSharps);
@@ -53,6 +53,16 @@ public class HitBox : MonoBehaviour
 
     private void PlayerCrush()
     {
+        // Если мы уже разбились в этом раунде — мгновенно игнорируем повторный удар
+        if (isCrushed) return;
+
+        // Если у игрока действует окно бессмертия после респавна — тоже выходим
+        if (playerMovement != null && playerMovement.CheckInvulnerable())
+            return;
+
+        // Фиксируем смерть: теперь ловушка больше не сможет запустить взрыв повторно
+        isCrushed = true;
+
         if (parentRb != null) parentRb.linearVelocity = Vector3.zero;
         if (playerMovement != null) playerMovement.DontRun();
 
@@ -60,20 +70,26 @@ public class HitBox : MonoBehaviour
         StartCoroutine(SpawnSharps());
     }
 
-    // Метод очистки сцены от мусора осколков
     public void HidePlayerCrush()
     {
         StopAllCoroutines();
+
+        // Сбрасываем флаг при возрождении или рестарте, чтобы игрок снова мог проиграть
+        isCrushed = false;
+
         if (createdSharps != null)
         {
             Destroy(createdSharps);
             createdSharps = null;
-            Debug.Log("[HitBox] Старые осколки успешно удалены со сцены.");
         }
     }
 
     private void OnCollisionEnter(Collision collision)
     {
+        // Если мы уже разбились или бессмертны — полностью игнорируем любые коллизии
+        if (isCrushed || (playerMovement != null && playerMovement.CheckInvulnerable()))
+            return;
+
         if (collision.gameObject.CompareTag("Colotun"))
         {
             PlayerCrush();

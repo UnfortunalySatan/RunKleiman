@@ -125,7 +125,7 @@ GameObject:
   - component: {fileID: 7887441732854573565}
   - component: {fileID: 7957714937866646201}
   - component: {fileID: 4393790644498160556}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -388,11 +388,6 @@ MonoBehaviour:
   downSpeed: 160
   minAngle: 0
   maxAngle: 75
-  soundAngle: 0
-  pitchMin: 0.9
-  pitchMax: 1.1
-  buttonClickSound: {fileID: 8300000, guid: 6279ec796c9d9194c887343afa809c47, type: 3}
-  audioSource: {fileID: 0}
 --- !u!1 &5438832740003472974
 GameObject:
   m_ObjectHideFlags: 0
@@ -442,11 +437,6 @@ MonoBehaviour:
   downSpeed: 60
   minAngle: -75
   maxAngle: 0
-  soundAngle: 0
-  pitchMin: 0.9
-  pitchMax: 1.1
-  buttonClickSound: {fileID: 8300000, guid: 6279ec796c9d9194c887343afa809c47, type: 3}
-  audioSource: {fileID: 0}
 --- !u!1 &6455438809886517072
 GameObject:
   m_ObjectHideFlags: 0

@@ -11053,7 +11053,7 @@ GameObject:
   - component: {fileID: 1455886279}
   - component: {fileID: 1455886278}
   - component: {fileID: 1455886277}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -17485,7 +17485,7 @@ MonoBehaviour:
   groundCheckOffset: {x: 0, y: -1, z: 0}
   groundLayer:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 8
   accelerationRate: 0.1
   maxSpeed: 15
   playerPoint: {fileID: 3745622627901083665}
