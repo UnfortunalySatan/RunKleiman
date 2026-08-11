@@ -6,11 +6,27 @@ public class HitBox : MonoBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private GameObject playerSharpsPrefab;
     private PlayerMovement playerMovement;
+    private Rigidbody parentRb;
     private GameObject createdSharps;
 
     private void Start()
     {
         playerMovement = GetComponentInParent<PlayerMovement>();
+        parentRb = GetComponentInParent<Rigidbody>();
+    }
+
+    private void OnEnable()
+    {
+        // Подписываемся на события продолжения и полного рестарта игры, 
+        // чтобы гарантированно удалять старые осколки при возрождении
+        EventBus.isContitue += HidePlayerCrush;
+        EventBus.isRestart += HidePlayerCrush;
+    }
+
+    private void OnDisable()
+    {
+        EventBus.isContitue -= HidePlayerCrush;
+        EventBus.isRestart -= HidePlayerCrush;
     }
 
     private Vector3 GetPosition()
@@ -20,7 +36,7 @@ public class HitBox : MonoBehaviour
 
     private IEnumerator SpawnSharps()
     {
-        // Защита от дублирования: если старый объект почему-то не удалился, удаляем его
+        // Если старые осколки почему-то еще живы — уничтожаем их перед созданием новых
         if (createdSharps != null)
         {
             Destroy(createdSharps);
@@ -37,11 +53,14 @@ public class HitBox : MonoBehaviour
 
     private void PlayerCrush()
     {
-        StartCoroutine(SpawnSharps());
-        EventBus.isCrush?.Invoke();
+        if (parentRb != null) parentRb.linearVelocity = Vector3.zero;
         if (playerMovement != null) playerMovement.DontRun();
+
+        EventBus.isCrush?.Invoke();
+        StartCoroutine(SpawnSharps());
     }
 
+    // Метод очистки сцены от мусора осколков
     public void HidePlayerCrush()
     {
         StopAllCoroutines();
@@ -49,6 +68,7 @@ public class HitBox : MonoBehaviour
         {
             Destroy(createdSharps);
             createdSharps = null;
+            Debug.Log("[HitBox] Старые осколки успешно удалены со сцены.");
         }
     }
 

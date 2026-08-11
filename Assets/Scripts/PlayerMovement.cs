@@ -15,22 +15,24 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float pushForce = 20f;
 
     [Header("Параметры прыжка")]
-    [SerializeField] private float jumpForce = 7f;         // Сила толчка вверх
-    [SerializeField] private float groundCheckDistance = 0.2f; // Длина луча проверки земли под ногами
-    [SerializeField] private LayerMask groundLayer;        // Слой, который считается землей (например, Default)
+    [SerializeField] private float jumpForce = 6.5f;           // Сила прыжка вверх
+    [SerializeField] private float groundCheckRadius = 0.25f;    // Радиус сферы проверки земли под ногами
+    [SerializeField] private Vector3 groundCheckOffset = new Vector3(0, -0.05f, 0); // Смещение сферы вниз под ноги
+    [SerializeField] private LayerMask groundLayer;            // Слой земли
 
     [Header("Ускорение со временем")]
-    [SerializeField] private float accelerationRate = 0.1f;
+    [SerializeField] private float accelerationRate = 0.05f;
     [SerializeField] private float maxSpeed = 15f;
 
     [Header("Ссылки на компоненты")]
     [SerializeField] private Transform playerPoint;
     [SerializeField] private Score score;
+    [SerializeField] private GameObject playerModel; // Ссылка на модельку игрока (чтобы скрывать при смерти)
 
     private float currentSpeed;
     private float currentSideSpeed;
     private bool isRun = false;
-    private bool isGrounded = true; // Находится ли игрок на земле прямо сейчас
+    private bool isGrounded = true;
 
     private float startZ;
     public float DistanceTraveled { get; private set; }
@@ -39,6 +41,7 @@ public class PlayerMovement : MonoBehaviour
     private int totalDT;
 
     public bool IsRecoveringFromAd { get; private set; } = false;
+    private SkinnedMeshRenderer playerRenderer;
 
     void Start()
     {
@@ -48,6 +51,9 @@ public class PlayerMovement : MonoBehaviour
         animator = GetComponentInChildren<Animator>();
         rb = GetComponentInChildren<Rigidbody>();
 
+        if (playerModel != null)
+            playerRenderer = playerModel.GetComponent<SkinnedMeshRenderer>();
+
         if (rb == null)
         {
             Debug.LogError("[PlayerMovement] Компонент Rigidbody не найден на дочерних объектах!");
@@ -56,6 +62,7 @@ public class PlayerMovement : MonoBehaviour
 
         // Включаем интерполяцию для идеального сглаживания движения камеры Cinemachine
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
 
         currentSpeed = baseSpeed;
         currentSideSpeed = baseSideSpeed;
@@ -63,19 +70,15 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // 1. Проверка нахождения на земле (пускаем луч из центра игрока чуть выше его ног строго вниз)
-        isGrounded = Physics.Raycast(playerPoint.position + Vector3.up * 0.1f, Vector3.down, groundCheckDistance + 0.1f, groundLayer);
+        // Проверка земли через сферу
+        Vector3 sphereCenter = playerPoint.position + groundCheckOffset;
+        isGrounded = Physics.CheckSphere(sphereCenter, groundCheckRadius, groundLayer);
 
-        // Рисуем этот луч в окне сцены Unity: зеленый — стоим на земле, красный — в воздухе
-        Debug.DrawRay(playerPoint.position + Vector3.up * 0.1f, Vector3.down * (groundCheckDistance + 0.1f), isGrounded ? Color.green : Color.red);
-
-        // 2. Обработка ввода прыжка (только если игра идет и персонаж касается земли)
         if (isRun && isGrounded && (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)))
         {
             Jump();
         }
 
-        // 3. Постепенное увеличение скорости
         if (isRun && currentSpeed < maxSpeed)
         {
             currentSpeed += accelerationRate * Time.deltaTime;
@@ -84,7 +87,6 @@ public class PlayerMovement : MonoBehaviour
             currentSideSpeed = Mathf.Min(currentSideSpeed, maxSpeed * 0.5f);
         }
 
-        // 4. Расчет пройденной дистанции
         if (isRun)
         {
             DistanceTraveled = playerPoint.position.z - startZ;
@@ -101,39 +103,37 @@ public class PlayerMovement : MonoBehaviour
         if (animator != null)
         {
             animator.SetBool("Run", isRun);
-            animator.SetBool("Grounded", isGrounded); // Передаем состояние земли в аниматор для будущих переходов
+            animator.SetBool("Grounded", isGrounded);
         }
 
         if (!isRun)
         {
-            if (rb != null) rb.linearVelocity = Vector3.zero;
+            if (rb != null) rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
             return;
         }
 
-        // Управление боковым смещением (A/D или стрелочки влево/вправо)
         float horizontal = Input.GetAxis("Horizontal");
 
-        // Сохраняем текущую скорость по Y (rb.linearVelocity.y), чтобы гравитация и прыжок работали корректно
+        // Возвращаем плавное движение через linearVelocity (Решает проблему дерганья камеры)
         Vector3 velocity = new Vector3(horizontal * currentSideSpeed, rb.linearVelocity.y, currentSpeed);
         rb.linearVelocity = velocity;
 
-        // Ограничение по краям трассы
+        // Ограничение по бокам трассы
         Vector3 pos = rb.position;
         pos.x = Mathf.Clamp(pos.x, minX, maxX);
-        rb.MovePosition(pos);
+        rb.position = pos;
     }
 
     private void Jump()
     {
         if (rb != null)
         {
-            // Перед импульсом обнуляем вертикальную скорость, чтобы прыжок всегда был одинаковой высоты
             rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
             rb.AddForce(Vector3.up * jumpForce, ForceMode.VelocityChange);
 
             if (animator != null)
             {
-                animator.SetTrigger("Jump"); // Запускаем триггер анимации прыжка
+                animator.SetTrigger("Jump");
             }
         }
     }
@@ -148,16 +148,42 @@ public class PlayerMovement : MonoBehaviour
     {
         EventBus.isPlay += Run;
         EventBus.isRestart += Restart;
+        EventBus.isCrush += OnPlayerCrush;   // Слушаем событие разрушения от крутилки
+        EventBus.isContitue += OnPlayerAlive; // Слушаем возрождение
     }
 
     private void OnDisable()
     {
         EventBus.isPlay -= Run;
         EventBus.isRestart -= Restart;
+        EventBus.isCrush -= OnPlayerCrush;
+        EventBus.isContitue -= OnPlayerAlive;
     }
 
     public void Run() => isRun = true;
     public void DontRun() => isRun = false;
+
+    // Логика разрушения игрока
+    private void OnPlayerCrush()
+    {
+        isRun = false;
+        if (playerRenderer != null) playerRenderer.enabled = false; // Прячем модельку
+        StartCoroutine(LateEndRoutine());
+    }
+
+    // Логика восстановления игрока (при старте или рестарте)
+    private void OnPlayerAlive()
+    {
+        if (playerRenderer != null) playerRenderer.enabled = true; // Возвращаем модельку
+        StopAllCoroutines();
+    }
+
+    private System.Collections.IEnumerator LateEndRoutine()
+    {
+        // Даем 2 секунды посмотреть на разлетающиеся осколки
+        yield return new WaitForSeconds(2f);
+        EventBus.isWallHit?.Invoke(); // Вызываем появление экрана смерти в LevelGenerator
+    }
 
     public void Restart()
     {
@@ -167,6 +193,7 @@ public class PlayerMovement : MonoBehaviour
             YG2.saves.playerScore += yDT;
         }
 
+        OnPlayerAlive(); // Гарантируем, что моделька станет видимой при перезапуске
         TeleportToStart();
         isRun = false;
     }
@@ -216,4 +243,13 @@ public class PlayerMovement : MonoBehaviour
     public void ClearTotalDT() => wasDT = 0;
     public void StartPosition() => TeleportToStart();
     public void playerOffMove() => isRun = false;
+
+    private void OnDrawGizmosSelected()
+    {
+        if (playerPoint != null)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(playerPoint.position + groundCheckOffset, groundCheckRadius);
+        }
+    }
 }

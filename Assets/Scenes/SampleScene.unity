@@ -17398,6 +17398,7 @@ GameObject:
   - component: {fileID: 8417361359089035523}
   - component: {fileID: 8417361359089035524}
   - component: {fileID: 8417361359089035525}
+  - component: {fileID: 8417361359089035526}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -17480,7 +17481,8 @@ MonoBehaviour:
   maxX: 5
   pushForce: 100
   jumpForce: 7
-  groundCheckDistance: 0.2
+  groundCheckRadius: 0.35
+  groundCheckOffset: {x: 0, y: -1, z: 0}
   groundLayer:
     serializedVersion: 2
     m_Bits: 1
@@ -17488,6 +17490,7 @@ MonoBehaviour:
   maxSpeed: 15
   playerPoint: {fileID: 3745622627901083665}
   score: {fileID: 2054681670}
+  playerModel: {fileID: 832149484681551611}
   DT: 0
   wasDT: 0
 --- !u!114 &919132148617236944
@@ -18677,7 +18680,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 832149484681551611}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: fca63b79b50d3714ab73b6a6f081f16f, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -18705,6 +18708,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitBox
   animator: {fileID: 5301744131676251869}
   playerSharpsPrefab: {fileID: 903283975814862390, guid: eeb86ad36c7ccb84ebdd0cc339f4214c, type: 3}
+--- !u!135 &8417361359089035526
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 832149484681551611}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 1.5142422
+  m_Center: {x: 0, y: -2.4699998, z: 0.36000016}
 --- !u!4 &8515279089807660379
 Transform:
   m_ObjectHideFlags: 0
