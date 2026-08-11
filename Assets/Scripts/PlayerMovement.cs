@@ -32,6 +32,9 @@ public class PlayerMovement : MonoBehaviour
     public int wasDT;
     private int totalDT;
 
+    // Свойство для защиты других менеджеров от ложных кликов после рекламы
+    public bool IsRecoveringFromAd { get; private set; } = false;
+
     void Start()
     {
         startZ = playerPoint.position.z;
@@ -46,7 +49,6 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
-        // Включаем интерполяцию физики для плавного движения камеры Cinemachine
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
         currentSpeed = baseSpeed;
@@ -55,7 +57,6 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        // Постепенное увеличение скорости во время бега
         if (isRun && currentSpeed < maxSpeed)
         {
             currentSpeed += accelerationRate * Time.deltaTime;
@@ -64,7 +65,6 @@ public class PlayerMovement : MonoBehaviour
             currentSideSpeed = Mathf.Min(currentSideSpeed, maxSpeed * 0.5f);
         }
 
-        // Расчет пройденной дистанции
         if (isRun)
         {
             DistanceTraveled = playerPoint.position.z - startZ;
@@ -83,21 +83,17 @@ public class PlayerMovement : MonoBehaviour
             animator.SetBool("Run", isRun);
         }
 
-        // Если бег отключен — мгновенно гасим физическую скорость
         if (!isRun)
         {
             if (rb != null) rb.linearVelocity = Vector3.zero;
             return;
         }
 
-        // Управление строго под ПК (Клавиатура AD / Стрелочки)
         float horizontal = Input.GetAxis("Horizontal");
 
-        // Расчет вектора скорости для Rigidbody
         Vector3 velocity = new Vector3(horizontal * currentSideSpeed, rb.linearVelocity.y, currentSpeed);
         rb.linearVelocity = velocity;
 
-        // Ограничение перемещения по бокам (блокировка вылета за края трассы)
         Vector3 pos = rb.position;
         pos.x = Mathf.Clamp(pos.x, minX, maxX);
         rb.MovePosition(pos);
@@ -137,7 +133,6 @@ public class PlayerMovement : MonoBehaviour
         {
             int yDT = score.GetScore();
             YG2.saves.playerScore += yDT;
-            // Убрали SaveProgress отсюда, так как LevelGenerator вызовет отправку лидерборда и сохранение в конце раунда сам
         }
 
         TeleportToStart();
@@ -151,7 +146,6 @@ public class PlayerMovement : MonoBehaviour
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
-        // Мгновенный сброс позиции в стартовую точку без дерганья Cinemachine
         playerPoint.position = new Vector3(0f, playerPoint.position.y, startZ);
     }
 
@@ -165,16 +159,27 @@ public class PlayerMovement : MonoBehaviour
 
     public void ContunueWithAd()
     {
-        // Вызов окна вознаграждения Яндекса для возрождения
-        YG2.RewardedAdvShow("continue", Reward);
+        // Использование уникального ID для исключения конфликтов с магазином
+        YG2.RewardedAdvShow("revive_player", Reward);
     }
 
     public void Reward()
     {
+        StartCoroutine(SafeRewardRoutine());
+    }
+
+    private System.Collections.IEnumerator SafeRewardRoutine()
+    {
+        IsRecoveringFromAd = true;
+
         EventBus.isContitue?.Invoke();
         EventBus.isPauseMenu?.Invoke();
         TeleportToStart();
         isRun = true;
+
+        // Пауза 0.2 секунды реального времени для игнорирования кликов EventSystem браузера
+        yield return new WaitForSecondsRealtime(0.2f);
+        IsRecoveringFromAd = false;
     }
 
     public void SaveTotalDT() => wasDT += DT;

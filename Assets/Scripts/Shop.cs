@@ -34,7 +34,6 @@ public class Shop : MonoBehaviour
 
         if (notEnoughPanel != null) notEnoughPanel.SetActive(false);
 
-        // Безопасная WebGL загрузка: ждем SDK Яндекса
         if (YG2.isSDKEnabled)
         {
             InitializeShop();
@@ -69,7 +68,6 @@ public class Shop : MonoBehaviour
         UpdateUI();
         UpdateScore();
 
-        // Автоматически обновляем аудио-клики на кнопках магазина, если они были созданы позже
         SoundManager soundManager = FindAnyObjectByType<SoundManager>();
         if (soundManager != null) soundManager.RefreshButtonListeners();
     }
@@ -192,7 +190,8 @@ public class Shop : MonoBehaviour
 
     private void OnReward(string id)
     {
-        if (id != rewardID || pendingIndex < 0) return;
+        // Игнорируем рекламу от возрождения игрока ("revive_player") и любые другие чужие ID
+        if (id != "material" || pendingIndex < 0) return;
 
         int index = pendingIndex;
 

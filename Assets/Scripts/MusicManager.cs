@@ -26,6 +26,8 @@ public class MusicManager : MonoBehaviour
     private bool isFading = false;
     private bool isPlaying = false;
 
+    private Coroutine fadeCoroutine;
+
     void Start()
     {
         if (musicSource == null)
@@ -38,7 +40,6 @@ public class MusicManager : MonoBehaviour
 
         CreatePlaylist();
 
-        // Безопасное WebGL-ожидание инициализации Яндекс SDK
         if (YG2.isSDKEnabled)
         {
             InitializeVolumeSettings();
@@ -56,11 +57,9 @@ public class MusicManager : MonoBehaviour
 
     void InitializeVolumeSettings()
     {
-        // Загружаем громкость из облачного сейва YG
         baseVolume = YG2.saves.musicVolume;
         float soundVolume = YG2.saves.soundVolume;
 
-        // Инициализируем ползунки, если они привязаны в инспекторе
         if (musicSlider != null)
         {
             musicSlider.value = baseVolume;
@@ -73,10 +72,8 @@ public class MusicManager : MonoBehaviour
             soundSlider.onValueChanged.AddListener(SetSoundVolume);
         }
 
-        // Применяем громкость к источнику
         musicSource.volume = baseVolume * volumeMultiplier;
 
-        // Запуск плейлиста
         if (playOnStart && musicTracks.Length > 0 && !isPlaying)
         {
             PlayNextTrack();
@@ -85,7 +82,6 @@ public class MusicManager : MonoBehaviour
 
     void Update()
     {
-        // Если трек завершился сам по себе — плавно переходим к следующему
         if (isPlaying && !isFading && !musicSource.isPlaying)
         {
             PlayNextTrack();
@@ -100,7 +96,6 @@ public class MusicManager : MonoBehaviour
             if (track != null) playlist.Add(track);
         }
 
-        // Рандом Фишера-Йетса
         for (int i = playlist.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
@@ -130,7 +125,12 @@ public class MusicManager : MonoBehaviour
             return;
         }
 
-        StartCoroutine(PlayTrackWithFade(nextTrack));
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+        }
+
+        fadeCoroutine = StartCoroutine(PlayTrackWithFade(nextTrack));
     }
 
     IEnumerator PlayTrackWithFade(AudioClip track)
@@ -169,17 +169,19 @@ public class MusicManager : MonoBehaviour
         musicSource.volume = targetVolume;
         isFading = false;
         isPlaying = true;
+        fadeCoroutine = null;
     }
 
-    // Изменение на лету при перетаскивании ползунка (Без сохранения в облако Яндекса)
     public void SetMusicVolume(float volume)
     {
         baseVolume = Mathf.Clamp01(volume);
-        musicSource.volume = baseVolume * volumeMultiplier;
+        if (!isFading)
+        {
+            musicSource.volume = baseVolume * volumeMultiplier;
+        }
         YG2.saves.musicVolume = baseVolume;
     }
 
-    // Изменение на лету при перетаскивании ползунка (Без сохранения в облако Яндекса)
     public void SetSoundVolume(float volume)
     {
         volume = Mathf.Clamp01(volume);
@@ -187,36 +189,45 @@ public class MusicManager : MonoBehaviour
         EventBus.soundVolumeChanged?.Invoke(volume);
     }
 
-    // ===== МЕТОДЫ ДЛЯ EVENT TRIGGER (POINTER UP) =====
-
-    // Вызывать на слайдере музыки при PointerUp
     public void SaveMusicVolumeFromSlider()
     {
         if (musicSlider != null)
         {
             SetMusicVolume(musicSlider.value);
-            YG2.SaveProgress(); // Отправляем данные в облако Яндекса только ОДИН раз при отпускании мыши
+            YG2.SaveProgress();
             Debug.Log($"[MusicManager] Громкость музыки ({musicSlider.value}) успешно отправлена в облако YG.");
         }
     }
 
-    // Вызывать на слайдере звуков при PointerUp
     public void SaveSoundVolumeFromSlider()
     {
         if (soundSlider != null)
         {
             SetSoundVolume(soundSlider.value);
-            YG2.SaveProgress(); // Отправляем данные в облако Яндекса только ОДИН раз при отпускании мыши
+            YG2.SaveProgress();
             Debug.Log($"[MusicManager] Громкость звуков ({soundSlider.value}) успешно отправлена в облако YG.");
         }
     }
 
-    // ===== ДОПОЛНИТЕЛЬНЫЙ УПРАВЛЯЮЩИЙ ФУНКЦИОНАЛ =====
-
     public void SkipTrack()
     {
         if (playlist.Count == 0) return;
-        StopAllCoroutines();
+
+        // Защита: Если игрок сейчас выходит из окна рекламы Яндекса, блокируем ложные клики EventSystem
+        PlayerMovement pm = FindAnyObjectByType<PlayerMovement>();
+        if (pm != null && pm.IsRecoveringFromAd)
+        {
+            Debug.Log("[MusicManager] Ложный клик заблокирован при выходе из рекламного оверлея.");
+            return;
+        }
+
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+            fadeCoroutine = null;
+        }
+
+        isFading = false;
         PlayNextTrack();
     }
 
@@ -230,7 +241,11 @@ public class MusicManager : MonoBehaviour
 
     public void StopMusic()
     {
-        StopAllCoroutines();
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+            fadeCoroutine = null;
+        }
         musicSource.Stop();
         isPlaying = false;
         isFading = false;
