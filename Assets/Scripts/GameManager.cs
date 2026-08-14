@@ -277,4 +277,10 @@ public class LevelGenerator : MonoBehaviour
     }
 
     public void InfoButton() => YG2.GetLeaderboard("Leaderboard");
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        // Если игрок свернул вкладку браузера или открыл рекламу, глушим всю игру
+        AudioListener.pause = !hasFocus;
+        Time.timeScale = hasFocus ? 1f : 0f;
+    }
 }
