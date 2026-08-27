@@ -25,6 +25,7 @@ public class Score : MonoBehaviour
     private void OnDisable()
     {
         EventBus.isWallHit -= SaveAndUploadRecord;
+        YG2.SaveProgress();
     }
 
     // Этот метод вызывается из PlayerMovement.cs каждый кадр во время бега
@@ -46,18 +47,20 @@ public class Score : MonoBehaviour
         if (currentLiveScore > YG2.saves.bestRunScore)
         {
             YG2.saves.bestRunScore = currentLiveScore;
-
+            YG2.SaveProgress();
             // 2. Локально обновляем текст рекорда на UI
             UpdateBestScoreUI();
 
             // 3. Отправляем рекорд в таблицу лидеров Яндекса (Строго 1 запрос)
             // Убедитесь, что техническое название таблицы в консоли Яндекса совпадает с "Leaderboard"
-            YG2.SetLeaderboard("Leaderboard", YG2.saves.bestRunScore); // [source: 1.4.1]
-
+            if (YG2.isSDKEnabled && YG2.player.auth)
+            {
+                YG2.SetLeaderboard("Leaderboard", currentLiveScore);
+            }
+             // [source: 1.4.1]
             // 4. Сохраняем прогресс в облачное хранилище Яндекса
             YG2.SaveProgress();
-
-            Debug.Log($"[Score] Новый рекорд зафиксирован и отправлен в Яндекс: {YG2.saves.bestRunScore}");
+            Debug.Log($"[Score] Новый рекорд зафиксирован и отправлен в Яндекс: {currentLiveScore}");
         }
         else
         {

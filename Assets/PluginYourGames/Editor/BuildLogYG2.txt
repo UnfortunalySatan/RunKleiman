@@ -1,3 +1,3 @@
-﻿Build path: D:/Builds/WebBuilds/RunKleiman/Files
-Build number: 12
+﻿Build path: D:/Projects/Unity/Builds/1
+Build number: 15
 PluginYG version: 2.0092

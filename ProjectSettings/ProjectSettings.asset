@@ -3,7 +3,7 @@
 --- !u!129 &1
 PlayerSettings:
   m_ObjectHideFlags: 0
-  serializedVersion: 28
+  serializedVersion: 29
   productGUID: 414023c01afa7d0428c5ddd631657bb6
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
@@ -65,10 +65,15 @@ PlayerSettings:
   useOSAutorotation: 1
   use32BitDisplayBuffer: 1
   preserveFramebufferAlpha: 0
+  adjustIOSFPSUsingThermalState: 1
+  thermalStateSeriousIOSFPS: 30
+  thermalStateCriticalIOSFPS: 15
   disableDepthAndStencilBuffers: 0
   androidStartInFullscreen: 1
   androidRenderOutsideSafeArea: 1
   androidUseSwappy: 0
+  androidRequestedVisibleInsets: 0
+  androidSystemBarsBehavior: 2
   androidDisplayOptions: 1
   androidBlitType: 0
   androidResizeableActivity: 1
@@ -143,7 +148,7 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 1.5.0
+  bundleVersion: 1.6.0
   preloadedAssets:
   - {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   metroInputSource: 0
@@ -175,7 +180,7 @@ PlayerSettings:
     tvOS: 0
   overrideDefaultApplicationIdentifier: 1
   AndroidBundleVersionCode: 1
-  AndroidMinSdkVersion: 25
+  AndroidMinSdkVersion: 26
   AndroidTargetSdkVersion: 0
   AndroidPreferredInstallLocation: 1
   AndroidPreferredDataLocation: 1
@@ -200,6 +205,7 @@ PlayerSettings:
   tvOSTargetOSVersionString: 15.0
   VisionOSSdkVersion: 0
   VisionOSTargetOSVersionString: 1.0
+  xcodeProjectType: 0
   uIPrerenderedIcon: 0
   uIRequiresPersistentWiFi: 0
   uIRequiresFullScreen: 1
@@ -267,7 +273,6 @@ PlayerSettings:
   useCustomGradleSettingsTemplate: 0
   useCustomProguardFile: 0
   AndroidTargetArchitectures: 2
-  AndroidAllowedArchitectures: -13
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
   AndroidKeystoreName: 
@@ -547,7 +552,9 @@ PlayerSettings:
   - m_BuildTarget: AndroidPlayer
     m_APIs: 150000000b000000
     m_Automatic: 0
-  m_BuildTargetVRSettings: []
+  - m_BuildTarget: WebGLSupport
+    m_APIs: 0b000000
+    m_Automatic: 1
   m_DefaultShaderChunkSizeInMB: 16
   m_DefaultShaderChunkCount: 0
   openGLRequireES31: 0
@@ -562,7 +569,16 @@ PlayerSettings:
   - serializedVersion: 2
     m_BuildTarget: Android
     m_EncodingQuality: 1
-  m_BuildTargetGroupHDRCubemapEncodingQuality: []
+  - serializedVersion: 2
+    m_BuildTarget: Standalone
+    m_EncodingQuality: 1
+  - serializedVersion: 2
+    m_BuildTarget: WebGL
+    m_EncodingQuality: 1
+  m_BuildTargetGroupHDRCubemapEncodingQuality:
+  - serializedVersion: 2
+    m_BuildTarget: Standalone
+    m_EncodingQuality: 1
   m_BuildTargetGroupLightmapSettings: []
   m_BuildTargetGroupLoadStoreDebugModeSettings: []
   m_BuildTargetNormalMapEncoding:
@@ -732,6 +748,8 @@ PlayerSettings:
   switchMicroSleepForYieldTime: 25
   switchRamDiskSpaceSize: 12
   switchUpgradedPlayerSettingsToNMETA: 0
+  switchCaStoreSource: 0
+  switchCaStoreFilePath: 
   ps4NPAgeRating: 12
   ps4NPTitleSecret: 
   ps4NPTrophyPackPath: 
@@ -841,23 +859,25 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    LinuxHeadlessSimulation: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    Nintendo Switch: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    PS4: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    PS5: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    Standalone: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    WebGL: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    Windows Store Apps: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    XboxOne: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    iPhone: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
-    tvOS: YandexGamesPlatform_yg;PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Leaderboards_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2
+    Android: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    LinuxHeadlessSimulation: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    Nintendo Switch: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    PS4: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    PS5: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    Standalone: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    WebGL: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    Windows Store Apps: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    XboxOne: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    iPhone: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
+    tvOS: PLUGIN_YG_2;TMP_YG2;RU_YG2;EnvirData_yg;Storage_yg;InterstitialAdv_yg;RewardedAdv_yg;Authorization_yg;Localization_yg;StickyAdv_yg;QuitGameEvent_yg;BannerAdv_yg;TextGameLoad_yg;AutoTranslateLangs_yg;NJSON_YG2;Leaderboards_yg;YandexGamesPlatform_yg
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
     Android: 1
+    Standalone: 1
   il2cppCompilerConfiguration: {}
   il2cppCodeGeneration: {}
+  il2cppLTOMode: {}
   il2cppStacktraceInformation: {}
   managedStrippingLevel:
     Standalone: 4
@@ -929,7 +949,6 @@ PlayerSettings:
   XboxOneXTitleMemory: 8
   XboxOneOverrideIdentityName: 
   XboxOneOverrideIdentityPublisher: 
-  vrEditorSettings: {}
   cloudServicesEnabled: {}
   luminIcon:
     m_Name: 

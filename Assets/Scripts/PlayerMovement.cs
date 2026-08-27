@@ -42,7 +42,7 @@ public class PlayerMovement : MonoBehaviour
     private int totalDT;
 
     public bool IsRecoveringFromAd { get; private set; } = false;
-    private SkinnedMeshRenderer playerRenderer; // Ваша рабочая одиночная ссылка
+    private SkinnedMeshRenderer playerRenderer;
 
     void Start()
     {
@@ -66,7 +66,6 @@ public class PlayerMovement : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
 
-        // Первичная установка стартовой скорости
         ResetSpeed();
     }
 
@@ -186,7 +185,7 @@ public class PlayerMovement : MonoBehaviour
     private System.Collections.IEnumerator InvulnerabilityRoutine()
     {
         isInvulnerable = true;
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(1f);
         isInvulnerable = false;
     }
 
@@ -196,12 +195,18 @@ public class PlayerMovement : MonoBehaviour
         {
             int yDT = score.GetScore();
             YG2.saves.playerScore += yDT;
+            YG2.SaveProgress();
         }
 
-        OnPlayerAlive();
-        TeleportToStart();
+        // КРИТИЧЕСКИЙ ФИКС: Сбрасываем триггеры анимации, чтобы "Hit" или "Jump" не выстрелили на старте
+        if (animator != null)
+        {
+            animator.ResetTrigger("Jump");
+            animator.ResetTrigger("Hit");
+        }
 
-        // КРИТИЧЕСКИЙ ФИКС: Сбрасываем накопленную скорость бега при возврате в меню/рестарте
+        TeleportToStart();
+        OnPlayerAlive();
         ResetSpeed();
 
         isRun = false;
@@ -213,8 +218,21 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
+
+            // Очищаем кэш старых столкновений в физическом теле
+            rb.Sleep();
+
+            rb.position = new Vector3(0f, playerPoint.position.y, startZ);
+            playerPoint.position = rb.position;
+
+            // КРИТИЧЕСКИЙ ФИКС: Принудительно заставляем Unity обновить физическую матрицу мира ПРЯМО СЕЙЧАС.
+            // Это мгновенно переносит коллайдер и не дает ему остаться "фантомом" на старом месте.
+            Physics.SyncTransforms();
         }
-        playerPoint.position = new Vector3(0f, playerPoint.position.y, startZ);
+        else
+        {
+            playerPoint.position = new Vector3(0f, playerPoint.position.y, startZ);
+        }
     }
 
     public void Push(Vector3 direction)

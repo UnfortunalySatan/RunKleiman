@@ -49,11 +49,16 @@ public class Shop : MonoBehaviour
         YG2.onRewardAdv += OnReward;
         if (notEnoughPanel != null) notEnoughPanel.SetActive(false);
         pendingIndex = -1;
+        if (YG2.isSDKEnabled)
+        {
+            YG2.SaveProgress();
+        }  
     }
 
     private void OnDisable()
     {
         YG2.onRewardAdv -= OnReward;
+        YG2.SaveProgress();
     }
 
     private void OnDestroy()

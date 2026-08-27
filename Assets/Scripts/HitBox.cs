@@ -10,6 +10,7 @@ public class HitBox : MonoBehaviour
     private GameObject createdSharps;
 
     private bool isCrushed = false;
+    private bool blockCollisionsImmediately = false; // Потоковый фикс ложных коллизий
     private Coroutine spawnSharpsCoroutine;
 
     private void Start()
@@ -42,7 +43,6 @@ public class HitBox : MonoBehaviour
             Destroy(createdSharps);
         }
 
-        // 1. Спавним осколки
         if (playerSharpsPrefab != null)
         {
             createdSharps = Instantiate(playerSharpsPrefab);
@@ -52,54 +52,62 @@ public class HitBox : MonoBehaviour
 
         yield return null;
 
-        // 2. Ждем 2 секунды игрового времени, чтобы игрок насладился визуалом разлета осколков
         yield return new WaitForSeconds(2f);
 
-        // 3. Жестко и гарантированно вызываем экран смерти через шину событий
         EventBus.isWallHit?.Invoke();
-
         spawnSharpsCoroutine = null;
     }
 
     private void PlayerCrush()
     {
-        if (isCrushed) return;
+        if (isCrushed || blockCollisionsImmediately) return;
 
         if (playerMovement != null && playerMovement.CheckInvulnerable())
             return;
 
         isCrushed = true;
 
-        // Мгновенно останавливаем физическое тело
         if (parentRb != null) parentRb.linearVelocity = Vector3.zero;
 
-        // Оповещаем PlayerMovement, чтобы он остановил бег и скрыл видимость оригинальной модельки
         EventBus.isCrush?.Invoke();
-
-        // Запускаем безопасную цепочку: спавн -> ожидание 2 сек -> экран смерти
         spawnSharpsCoroutine = StartCoroutine(SpawnSharpsRoutine());
     }
 
     public void HidePlayerCrush()
     {
+        isCrushed = false;
+
         if (spawnSharpsCoroutine != null)
         {
             StopCoroutine(spawnSharpsCoroutine);
             spawnSharpsCoroutine = null;
         }
 
-        isCrushed = false;
-
         if (createdSharps != null)
         {
             Destroy(createdSharps);
             createdSharps = null;
         }
+
+        // Фикс: запускаем короткую аппаратную блокировку триггеров на время телепортации
+        StartCoroutine(TemporaryInvulnerabilityRoutine());
+    }
+
+    private IEnumerator TemporaryInvulnerabilityRoutine()
+    {
+        blockCollisionsImmediately = true;
+        // Ждем пару физических кадров, пока сцена полностью перестроится
+        yield return new WaitForSecondsRealtime(0.15f);
+        blockCollisionsImmediately = false;
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (isCrushed || (playerMovement != null && playerMovement.CheckInvulnerable()))
+        // Если включен блок коллизий из-за недавнего рестарта — полностью игнорируем удар
+        if (isCrushed || blockCollisionsImmediately)
+            return;
+
+        if (playerMovement != null && playerMovement.CheckInvulnerable())
             return;
 
         if (collision.gameObject.CompareTag("Colotun"))

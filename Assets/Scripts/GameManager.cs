@@ -191,21 +191,15 @@ public class LevelGenerator : MonoBehaviour
         isPlay = true;
 
         if (pauseMenu != null) pauseMenu.SetActive(false);
-
-        // 1. Возвращаем физическое время в Unity
         PauseGameYG.SetState(1, false, true);
 
         if (scoreText != null) scoreText.SetActive(true);
 
-        // 2. КРИТИЧЕСКИЙ ВЫЗОВ: Отправляем эвент в шину событий, 
-        // чтобы разбудить PlayerMovement и заставить игрока бежать вперед!
         EventBus.isPlay?.Invoke();
-
         ClearUIFocus();
 
         Debug.Log("[LevelGenerator] Игра успешно снята с паузы. Игрок побежал дальше.");
     }
-
 
     public void AnimationEnd()
     {
@@ -215,8 +209,11 @@ public class LevelGenerator : MonoBehaviour
     public void MainMenu()
     {
         isPlay = false;
+        YG2.SaveProgress();
 
+        // Фикс: Принудительно чистим пул полностью, чтобы старая физика удалилась
         if (chunkPool != null) chunkPool.ClearAllPools();
+
         ResetGenerator();
 
         if (deathScreen != null) deathScreen.SetActive(false);
@@ -261,25 +258,24 @@ public class LevelGenerator : MonoBehaviour
 
     public void ContitueWithAd()
     {
-        isPlay = false; // Останавливаем логику генерации апдейтов
+        isPlay = false;
 
-        // Полностью перестраиваем уровень под ногами игрока (в точку 0,0,0) прямо сейчас
+        // Фикс: Принудительно чистим пул перед перегенерацией под рекламу
+        if (chunkPool != null) chunkPool.ClearAllPools();
+
         ResetGeneratorState();
 
         if (deathScreen != null) deathScreen.SetActive(false);
         if (pauseMenu != null) pauseMenu.SetActive(true);
         if (scoreText != null) scoreText.SetActive(false);
 
-        // Только теперь фиксируем заморозку ввода на уровне плагина Яндекса
         PauseGameYG.SetState(0, false, true);
-
         ClearUIFocus();
     }
 
     public void InfoButton() => YG2.GetLeaderboard("Leaderboard");
     private void OnApplicationFocus(bool hasFocus)
     {
-        // Если игрок свернул вкладку браузера или открыл рекламу, глушим всю игру
         AudioListener.pause = !hasFocus;
         Time.timeScale = hasFocus ? 1f : 0f;
     }
